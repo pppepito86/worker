@@ -71,6 +71,7 @@ public class RestService {
 			}
 			return new ResponseEntity<>(HttpStatus.CREATED);
 		} catch (Exception e) {
+			e.printStackTrace();
 			return new ResponseEntity<>(HttpStatus.CONFLICT);
 		}
 	}
@@ -89,6 +90,7 @@ public class RestService {
 			grader.grade();
 			return new ResponseEntity<>(grader.getScore(), HttpStatus.OK);
 		} catch (Exception e) {
+			e.printStackTrace();
 			return new ResponseEntity<>(HttpStatus.CONFLICT);
 		}
 	}
