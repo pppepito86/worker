@@ -78,12 +78,13 @@ public class RestService {
 	@PostMapping("/submissions/{submission_id}")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	public ResponseEntity<?> addSubmission(@PathVariable("submission_id") String submissionId,
-			@RequestPart(name = "metadata", required = false) Optional<SubmissionDao> submission, @RequestPart("file") MultipartFile file)
+			@RequestPart(name = "metadata", required = false) Optional<SubmissionDao> submission,
+			@RequestPart("file") MultipartFile file)
 			throws Exception {
 		try {
-			File submissionFile = submissionsStorage.storeSubmission(submissionId, "solve.cpp",
-					file.getInputStream());
-			TaskDetails taskTests = problemsCache.getProblemNew(1);
+			File submissionFile = submissionsStorage.storeSubmission(
+					submissionId, file.getOriginalFilename(), file.getInputStream());
+			TaskDetails taskTests = problemsCache.getProblemNew(Integer.valueOf(submission.get().getProblemId()));
 			SubmissionGrader grader = new SubmissionGrader(taskTests, submissionFile.getAbsolutePath());
 			grader.grade();
 			return new ResponseEntity<>(grader.getScore(), HttpStatus.OK);
