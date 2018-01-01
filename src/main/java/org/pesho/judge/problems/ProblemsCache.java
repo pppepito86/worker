@@ -22,7 +22,7 @@ public class ProblemsCache {
 		return cache.getOrDefault(id, storage.loadProblem(id));
 	}
 	
-	public TaskDetails getProbleNew(int id) {
+	public TaskDetails getProblemNew(int id) {
 		return cacheNew.get(id);
 	}
 

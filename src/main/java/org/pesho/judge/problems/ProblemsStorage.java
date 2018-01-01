@@ -87,7 +87,11 @@ public class ProblemsStorage {
 				while (entries.hasMoreElements()) {
 					ZipEntry entry = entries.nextElement();
 					File test = new File(problemDir, entry.getName());
-					FileUtils.copyInputStreamToFile(zipFile.getInputStream(entry), test);
+					if (entry.isDirectory()) {
+						test.mkdirs();
+					} else {
+						FileUtils.copyInputStreamToFile(zipFile.getInputStream(entry), test);
+					}
 				}
 			}
 		} catch (Exception e) {

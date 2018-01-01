@@ -83,7 +83,7 @@ public class RestService {
 		try {
 			File submissionFile = submissionsStorage.storeSubmission(submissionId, "solve.cpp",
 					file.getInputStream());
-			TaskDetails taskTests = problemsCache.getProbleNew(1);
+			TaskDetails taskTests = problemsCache.getProblemNew(1);
 			SubmissionGrader grader = new SubmissionGrader(taskTests, submissionFile.getAbsolutePath());
 			grader.grade();
 			return new ResponseEntity<>(grader.getScore(), HttpStatus.OK);
