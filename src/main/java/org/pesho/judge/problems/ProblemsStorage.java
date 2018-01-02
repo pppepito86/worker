@@ -1,6 +1,7 @@
 package org.pesho.judge.problems;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Enumeration;
 import java.util.zip.ZipEntry;
@@ -9,7 +10,7 @@ import java.util.zip.ZipFile;
 import org.apache.commons.io.FileUtils;
 import org.pesho.grader.task.TaskParser;
 import org.pesho.grader.task.TaskDetails;
-import org.pesho.judge.daos.ProblemDao;
+import org.pesho.judge.daos.ProblemDto;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
@@ -23,7 +24,7 @@ public class ProblemsStorage {
 
 	private ObjectMapper objectMapper = new ObjectMapper();
 
-	public ProblemDao loadProblem(int id) {
+	public ProblemDto loadProblem(int id) {
 		File problemsDir = new File(workDir, "problems");
 		File problemDir = new File(problemsDir, String.valueOf(id));
 		File problemMetadata = new File(problemDir, "metadata.json");
@@ -31,16 +32,42 @@ public class ProblemsStorage {
 			return null;
 
 		try {
-			return objectMapper.readValue(problemMetadata, ProblemDao.class);
+			return objectMapper.readValue(problemMetadata, ProblemDto.class);
 		} catch (Exception e) {
 			throw new IllegalStateException("Cannot parse file");
 		}
 	}
 
+	public void deleteProblem(int id) {
+		File problemsDir = new File(workDir, "problems");
+		File problemDir = new File(problemsDir, String.valueOf(id));
+		
+		if (!problemDir.exists()) {
+			return;
+		}
+		
+		try {
+			FileUtils.forceDelete(problemDir);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public TaskDetails updateProblem(int id, InputStream is) {
+		deleteProblem(id);
+		return storeProblem(id, is);
+	}
+		
 	public TaskDetails storeProblem(int id, InputStream is) {
 		File problemsDir = new File(workDir, "problems");
 		File problemDir = new File(problemsDir, String.valueOf(id));
+		
+		if (problemDir.exists()) {
+			throw new IllegalStateException("Problem already exists.");
+		}
+		
 		problemDir.mkdirs();
+		
 		try {
 			File testsFile = new File(problemDir, "problem.zip");
 			FileUtils.copyInputStreamToFile(is, testsFile);
@@ -68,7 +95,7 @@ public class ProblemsStorage {
 		}
 	}
 	
-	public void storeProblem(int id, ProblemDao problem, InputStream is) {
+	public void storeProblem(int id, ProblemDto problem, InputStream is) {
 		File problemsDir = new File(workDir, "problems");
 		File problemDir = new File(problemsDir, String.valueOf(id));
 		File problemMetadata = new File(problemDir, "metadata.json");

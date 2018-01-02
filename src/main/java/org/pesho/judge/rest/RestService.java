@@ -9,7 +9,7 @@ import javax.ws.rs.core.MediaType;
 
 import org.pesho.grader.SubmissionGrader;
 import org.pesho.grader.task.TaskDetails;
-import org.pesho.judge.daos.ProblemDao;
+import org.pesho.judge.daos.ProblemDto;
 import org.pesho.judge.daos.SubmissionDao;
 import org.pesho.judge.problems.ProblemsCache;
 import org.pesho.judge.problems.SubmissionsStorage;
@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
@@ -44,13 +45,13 @@ public class RestService {
 	}
 
 	@GetMapping("/problems")
-	public Collection<ProblemDao> listProblems() {
+	public Collection<ProblemDto> listProblems() {
 		return problemsCache.listProblems();
 	}
 
 	@GetMapping("/problems/{problem_id}")
 	public ResponseEntity<?> getProblem(@PathVariable("problem_id") int problemId) {
-		ProblemDao problem = problemsCache.getProblem(Integer.valueOf(problemId));
+		ProblemDto problem = problemsCache.getProblem(Integer.valueOf(problemId));
 		if (problem != null) {
 			return new ResponseEntity<>(problem, HttpStatus.OK);
 		} else {
@@ -58,21 +59,34 @@ public class RestService {
 		}
 	}
 
+	@PutMapping("/problems/{problem_id}")
+	@Consumes(MediaType.MULTIPART_FORM_DATA)
+	public ResponseEntity<?> updateProblem(@PathVariable("problem_id") Integer problemId,
+			@RequestPart("file") MultipartFile file) throws Exception {
+		try {
+			problemsCache.updateProblem(problemId, file.getInputStream());
+			return new ResponseEntity<>(HttpStatus.OK);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+	
 	@PostMapping("/problems/{problem_id}")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
-	public ResponseEntity<?> addProblem(@PathVariable("problem_id") String problemId,
-			@RequestPart(name = "metadata", required = false) Optional<ProblemDao> problem,
+	public ResponseEntity<?> addProblem(@PathVariable("problem_id") Integer problemId,
+			@RequestPart(name = "metadata", required = false) Optional<ProblemDto> problem,
 			@RequestPart("file") MultipartFile file) throws Exception {
 		try {
 			if (problem.isPresent()) {
-				problemsCache.addProblem(Integer.valueOf(problemId), problem.get(), file.getInputStream());
+				problemsCache.addProblem(problemId, problem.get(), file.getInputStream());
 			} else {
-				problemsCache.addProblem(Integer.valueOf(problemId), file.getInputStream());
+				problemsCache.addProblem(problemId, file.getInputStream());
 			}
 			return new ResponseEntity<>(HttpStatus.CREATED);
 		} catch (Exception e) {
 			e.printStackTrace();
-			return new ResponseEntity<>(HttpStatus.CONFLICT);
+			return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 

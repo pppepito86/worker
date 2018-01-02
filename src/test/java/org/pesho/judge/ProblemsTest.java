@@ -18,7 +18,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.pesho.judge.daos.LanguageDao;
-import org.pesho.judge.daos.ProblemDao;
+import org.pesho.judge.daos.ProblemDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -76,8 +76,8 @@ public class ProblemsTest {
 				.andExpect(jsonPath("$[0].problemname", is("a+b+c")));
 	}
 	
-	private ProblemDao createProblem() {
-		ProblemDao problem = new ProblemDao();
+	private ProblemDto createProblem() {
+		ProblemDto problem = new ProblemDto();
 		problem.setProblemname("a+b+c");
 		problem.setVersion("v1");
 		problem.setText("namerete sbora na chislata a, b i c");

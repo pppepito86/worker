@@ -2,7 +2,7 @@ package org.pesho.judge.daos;
 
 import java.util.List;
 
-public class ProblemDao {
+public class ProblemDto {
 	
     private String problemname;
     private String version;
