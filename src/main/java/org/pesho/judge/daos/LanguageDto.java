@@ -1,14 +1,14 @@
 package org.pesho.judge.daos;
 
-public class LanguageDao {
+public class LanguageDto {
 
 	private String language;
 	private int timeLimit; // ms
 	private int memoryLimit; // MB
 
-	public LanguageDao() {}
+	public LanguageDto() {}
 	
-	public LanguageDao(String language, int timeLimit, int memoryLimit) {
+	public LanguageDto(String language, int timeLimit, int memoryLimit) {
 		this.language = language;
 		this.timeLimit = timeLimit;
 		this.memoryLimit = memoryLimit;

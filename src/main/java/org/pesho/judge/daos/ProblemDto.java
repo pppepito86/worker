@@ -11,7 +11,7 @@ public class ProblemDto {
     private String test;
     private String visibility;
     private String points;
-    private List<LanguageDao> languages;
+    private List<LanguageDto> languages;
 
     public String getProblemname() {
         return problemname;
@@ -69,11 +69,11 @@ public class ProblemDto {
         this.points = points;
     }
 
-    public List<LanguageDao> getLanguages() {
+    public List<LanguageDto> getLanguages() {
 		return languages;
 	}
     
-    public void setLanguages(List<LanguageDao> languages) {
+    public void setLanguages(List<LanguageDto> languages) {
 		this.languages = languages;
 	}
     

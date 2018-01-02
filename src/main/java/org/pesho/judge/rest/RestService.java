@@ -10,7 +10,7 @@ import javax.ws.rs.core.MediaType;
 import org.pesho.grader.SubmissionGrader;
 import org.pesho.grader.task.TaskDetails;
 import org.pesho.judge.daos.ProblemDto;
-import org.pesho.judge.daos.SubmissionDao;
+import org.pesho.judge.daos.SubmissionDto;
 import org.pesho.judge.problems.ProblemsCache;
 import org.pesho.judge.problems.SubmissionsStorage;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -93,7 +93,7 @@ public class RestService {
 	@PostMapping("/submissions/{submission_id}")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	public ResponseEntity<?> addSubmission(@PathVariable("submission_id") String submissionId,
-			@RequestPart(name = "metadata", required = false) Optional<SubmissionDao> submission,
+			@RequestPart(name = "metadata", required = false) Optional<SubmissionDto> submission,
 			@RequestPart("file") MultipartFile file)
 			throws Exception {
 		try {

@@ -1,13 +1,13 @@
 package org.pesho.judge.daos;
 
-public class SubmissionDao {
+public class SubmissionDto {
 
 	private String problemId;
 	
-	public SubmissionDao() {
+	public SubmissionDto() {
 	}
 	
-	public SubmissionDao(String problemId) {
+	public SubmissionDto(String problemId) {
 		this.problemId = problemId;
 	}
 	
