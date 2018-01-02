@@ -51,11 +51,11 @@ public class RestService {
 
 	@GetMapping("/problems/{problem_id}")
 	public ResponseEntity<?> getProblem(@PathVariable("problem_id") int problemId) {
-		ProblemDto problem = problemsCache.getProblem(Integer.valueOf(problemId));
+		TaskDetails problem = problemsCache.getProblemNew(Integer.valueOf(problemId));
 		if (problem != null) {
 			return new ResponseEntity<>(problem, HttpStatus.OK);
 		} else {
-			return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+			return new ResponseEntity<>(HttpStatus.NOT_FOUND);
 		}
 	}
 
