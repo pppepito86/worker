@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -23,18 +25,33 @@ public class ProblemsStorage {
 
 	private ObjectMapper objectMapper = new ObjectMapper();
 
-	public TaskDetails loadProblem(int id) {
+	public Map<Integer, TaskDetails> loadProblems() {
+		Map<Integer, TaskDetails> map = new HashMap<>();
 		File problemsDir = new File(workDir, "problems");
-		File problemDir = new File(problemsDir, String.valueOf(id));
-		File problemMetadata = new File(problemDir, "metadata.json");
-		if (!problemMetadata.exists())
-			return null;
+		File[] problemsDirs = problemsDir.listFiles();
+		if (problemsDirs == null) return map;
+		
+		for (File problemDir: problemsDir.listFiles()) {
+			if (!problemDir.isDirectory()) continue;
+			
+			File problemMetadata = new File(problemDir, "metadata.json");
+			if (!problemMetadata.exists()) {
+				try {
+					FileUtils.forceDelete(problemDir);
+				}catch (IOException e) {
+					e.printStackTrace();
+				}
+				continue;
+			}
 
-		try {
-			return objectMapper.readValue(problemMetadata, TaskDetails.class);
-		} catch (Exception e) {
-			throw new IllegalStateException("Cannot parse file");
+			try {
+				TaskDetails details = objectMapper.readValue(problemMetadata, TaskDetails.class);
+				map.put(Integer.valueOf(problemDir.getName()), details);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
+		return map;
 	}
 
 	public void deleteProblem(int id) {

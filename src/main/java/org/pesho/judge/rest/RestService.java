@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -58,49 +59,51 @@ public class RestService {
 		}
 	}
 
-	@PutMapping("/problems/{problem_id}")
-	@Consumes(MediaType.MULTIPART_FORM_DATA)
-	public ResponseEntity<?> updateProblem(@PathVariable("problem_id") Integer problemId,
-			@RequestPart("file") MultipartFile file) throws Exception {
-		try {
-			problemsCache.updateProblem(problemId, file.getInputStream());
-			return new ResponseEntity<>(HttpStatus.OK);
-		} catch (Exception e) {
-			e.printStackTrace();
-			return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-		}
-	}
-	
 	@PostMapping("/problems/{problem_id}")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
-	public ResponseEntity<?> addProblem(@PathVariable("problem_id") Integer problemId,
+	public ResponseEntity<?> addProblem(@PathVariable("problem_id") int problemId,
 			@RequestPart("file") MultipartFile file) throws Exception {
-		try {
+		if (problemsCache.getProblem(problemId) == null) {
 			problemsCache.addProblem(problemId, file.getInputStream());
 			return new ResponseEntity<>(HttpStatus.CREATED);
-		} catch (Exception e) {
-			e.printStackTrace();
-			return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+		} else {
+			return new ResponseEntity<>(HttpStatus.CONFLICT);
+		}
+	}
+
+	@PutMapping("/problems/{problem_id}")
+	@Consumes(MediaType.MULTIPART_FORM_DATA)
+	public ResponseEntity<?> updateProblem(@PathVariable("problem_id") int problemId,
+			@RequestPart("file") MultipartFile file) throws Exception {
+		if (problemsCache.getProblem(problemId) != null) {
+			problemsCache.updateProblem(problemId, file.getInputStream());
+			return new ResponseEntity<>(HttpStatus.OK);
+		} else {
+			return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+		}
+	}
+
+	@DeleteMapping("/problems/{problem_id}")
+	public ResponseEntity<?> deleteProblem(@PathVariable("problem_id") int problemId) throws Exception {
+		if (problemsCache.getProblem(problemId) != null) {
+			problemsCache.removeProblem(problemId);
+			return new ResponseEntity<>(HttpStatus.OK);
+		} else {
+			return new ResponseEntity<>(HttpStatus.NOT_FOUND);
 		}
 	}
 
 	@PostMapping("/submissions/{submission_id}")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	public ResponseEntity<?> addSubmission(@PathVariable("submission_id") String submissionId,
-			@RequestPart(name = "metadata", required = false) Optional<SubmissionDto> submission,
-			@RequestPart("file") MultipartFile file)
-			throws Exception {
-		try {
-			File submissionFile = submissionsStorage.storeSubmission(
-					submissionId, file.getOriginalFilename(), file.getInputStream());
-			TaskDetails taskTests = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()));
-			SubmissionGrader grader = new SubmissionGrader(taskTests, submissionFile.getAbsolutePath());
-			grader.grade();
-			return new ResponseEntity<>(grader.getScore(), HttpStatus.OK);
-		} catch (Exception e) {
-			e.printStackTrace();
-			return new ResponseEntity<>(HttpStatus.CONFLICT);
-		}
+			@RequestPart(name = "metadata") Optional<SubmissionDto> submission,
+			@RequestPart("file") MultipartFile file) throws Exception {
+		File submissionFile = submissionsStorage.storeSubmission(submissionId, file.getOriginalFilename(),
+				file.getInputStream());
+		TaskDetails taskTests = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()));
+		SubmissionGrader grader = new SubmissionGrader(taskTests, submissionFile.getAbsolutePath());
+		grader.grade();
+		return new ResponseEntity<>(grader.getScore(), HttpStatus.OK);
 	}
 
 }
