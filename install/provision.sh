@@ -37,4 +37,4 @@ git clone https://github.com/pppepito86/worker.git /vagrant/worker
 mvn install -f /vagrant/sandbox/pom.xml
 mvn install -f /vagrant/grader/pom.xml
 mvn install -f /vagrant/worker/pom.xml
-mvn spring-boot:run -f /vagrant/worker/pom.xml
+mvn spring-boot:run -f /vagrant/worker/pom.xml >/vagrant/worker/stdout 2> /vagrant/worker/stderr &
