@@ -8,9 +8,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import org.apache.commons.io.FileUtils;
-import org.pesho.grader.task.TaskParser;
 import org.pesho.grader.task.TaskDetails;
-import org.pesho.judge.daos.ProblemDto;
+import org.pesho.grader.task.TaskParser;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
@@ -24,7 +23,7 @@ public class ProblemsStorage {
 
 	private ObjectMapper objectMapper = new ObjectMapper();
 
-	public ProblemDto loadProblem(int id) {
+	public TaskDetails loadProblem(int id) {
 		File problemsDir = new File(workDir, "problems");
 		File problemDir = new File(problemsDir, String.valueOf(id));
 		File problemMetadata = new File(problemDir, "metadata.json");
@@ -32,7 +31,7 @@ public class ProblemsStorage {
 			return null;
 
 		try {
-			return objectMapper.readValue(problemMetadata, ProblemDto.class);
+			return objectMapper.readValue(problemMetadata, TaskDetails.class);
 		} catch (Exception e) {
 			throw new IllegalStateException("Cannot parse file");
 		}
@@ -95,35 +94,4 @@ public class ProblemsStorage {
 		}
 	}
 	
-	public void storeProblem(int id, ProblemDto problem, InputStream is) {
-		File problemsDir = new File(workDir, "problems");
-		File problemDir = new File(problemsDir, String.valueOf(id));
-		File problemMetadata = new File(problemDir, "metadata.json");
-		problemDir.mkdirs();
-		try {
-			FileUtils.writeByteArrayToFile(problemMetadata, objectMapper.writeValueAsBytes(problem));
-		} catch (Exception e) {
-			throw new IllegalStateException("Could not write to file", e);
-		}
-
-		try {
-			File testsFile = new File(problemDir, "tests.zip");
-			FileUtils.copyInputStreamToFile(is, testsFile);
-			try (ZipFile zipFile = new ZipFile(testsFile)) {
-				Enumeration<? extends ZipEntry> entries = zipFile.entries();
-				while (entries.hasMoreElements()) {
-					ZipEntry entry = entries.nextElement();
-					File test = new File(problemDir, entry.getName());
-					if (entry.isDirectory()) {
-						test.mkdirs();
-					} else {
-						FileUtils.copyInputStreamToFile(zipFile.getInputStream(entry), test);
-					}
-				}
-			}
-		} catch (Exception e) {
-			throw new IllegalStateException("problem copying archive", e);
-		}
-	}
-
 }

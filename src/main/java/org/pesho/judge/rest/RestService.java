@@ -9,7 +9,6 @@ import javax.ws.rs.core.MediaType;
 
 import org.pesho.grader.SubmissionGrader;
 import org.pesho.grader.task.TaskDetails;
-import org.pesho.judge.daos.ProblemDto;
 import org.pesho.judge.daos.SubmissionDto;
 import org.pesho.judge.problems.ProblemsCache;
 import org.pesho.judge.problems.SubmissionsStorage;
@@ -45,13 +44,13 @@ public class RestService {
 	}
 
 	@GetMapping("/problems")
-	public Collection<ProblemDto> listProblems() {
+	public Collection<TaskDetails> listProblems() {
 		return problemsCache.listProblems();
 	}
 
 	@GetMapping("/problems/{problem_id}")
 	public ResponseEntity<?> getProblem(@PathVariable("problem_id") int problemId) {
-		TaskDetails problem = problemsCache.getProblemNew(Integer.valueOf(problemId));
+		TaskDetails problem = problemsCache.getProblem(Integer.valueOf(problemId));
 		if (problem != null) {
 			return new ResponseEntity<>(problem, HttpStatus.OK);
 		} else {
@@ -75,14 +74,9 @@ public class RestService {
 	@PostMapping("/problems/{problem_id}")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	public ResponseEntity<?> addProblem(@PathVariable("problem_id") Integer problemId,
-			@RequestPart(name = "metadata", required = false) Optional<ProblemDto> problem,
 			@RequestPart("file") MultipartFile file) throws Exception {
 		try {
-			if (problem.isPresent()) {
-				problemsCache.addProblem(problemId, problem.get(), file.getInputStream());
-			} else {
-				problemsCache.addProblem(problemId, file.getInputStream());
-			}
+			problemsCache.addProblem(problemId, file.getInputStream());
 			return new ResponseEntity<>(HttpStatus.CREATED);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -99,7 +93,7 @@ public class RestService {
 		try {
 			File submissionFile = submissionsStorage.storeSubmission(
 					submissionId, file.getOriginalFilename(), file.getInputStream());
-			TaskDetails taskTests = problemsCache.getProblemNew(Integer.valueOf(submission.get().getProblemId()));
+			TaskDetails taskTests = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()));
 			SubmissionGrader grader = new SubmissionGrader(taskTests, submissionFile.getAbsolutePath());
 			grader.grade();
 			return new ResponseEntity<>(grader.getScore(), HttpStatus.OK);
