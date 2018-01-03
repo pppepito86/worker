@@ -8,6 +8,7 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.core.MediaType;
 
 import org.pesho.grader.SubmissionGrader;
+import org.pesho.grader.SubmissionScore;
 import org.pesho.grader.task.TaskDetails;
 import org.pesho.judge.daos.SubmissionDto;
 import org.pesho.judge.problems.ProblemsCache;
@@ -100,10 +101,31 @@ public class RestService {
 			@RequestPart("file") MultipartFile file) throws Exception {
 		File submissionFile = submissionsStorage.storeSubmission(submissionId, file.getOriginalFilename(),
 				file.getInputStream());
-		TaskDetails taskTests = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()));
-		SubmissionGrader grader = new SubmissionGrader(taskTests, submissionFile.getAbsolutePath());
-		grader.grade();
-		return new ResponseEntity<>(grader.getScore(), HttpStatus.OK);
+		submissionsStorage.setStatus(submissionId, "running");
+		Runnable runnable = () -> {
+			TaskDetails taskTests = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()));
+			SubmissionGrader grader = new SubmissionGrader(taskTests, submissionFile.getAbsolutePath());
+			grader.grade();
+			SubmissionScore score = grader.getScore();
+			try {
+				submissionsStorage.setStatus(submissionId, "finished");
+				submissionsStorage.setResult(submissionId, score);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		};
+		new Thread(runnable).start();
+		return new ResponseEntity<>(HttpStatus.CREATED);
 	}
 
+	@GetMapping("/submissions/{submission_id}/status")
+	public String getStatus(@PathVariable("submission_id") String submissionId) throws Exception {
+		return submissionsStorage.getStatus(submissionId);
+	}
+	
+	@GetMapping("/submissions/{submission_id}/score")
+	public SubmissionScore getScore(@PathVariable("submission_id") String submissionId) throws Exception {
+		return submissionsStorage.getResult(submissionId);
+	}
+	
 }
