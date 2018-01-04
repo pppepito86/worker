@@ -108,7 +108,6 @@ public class RestService {
 			grader.grade();
 			SubmissionScore score = grader.getScore();
 			try {
-				Thread.sleep(3000);
 				submissionsStorage.setStatus(submissionId, "finished");
 				submissionsStorage.setResult(submissionId, score);
 			} catch (Exception e) {
