@@ -112,6 +112,12 @@ public class RestService {
 				submissionsStorage.setResult(submissionId, score);
 			} catch (Exception e) {
 				e.printStackTrace();
+				try {
+					submissionsStorage.setStatus(submissionId, "failed");
+				} catch (Exception e2) {
+					System.out.println("FATAL ERROR");
+					e2.printStackTrace();
+				}
 			}
 		};
 		new Thread(runnable).start();
