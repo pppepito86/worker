@@ -19,7 +19,7 @@ public class SubmissionsStorage {
 	@Value("${work.dir}")
 	private String workDir;
 
-	public File storeSubmission(String id, String name, InputStream is) {
+	public synchronized File storeSubmission(String id, String name, InputStream is) {
 		File submissionsDir = new File(workDir, "submissions");
 		File submissionDir = new File(submissionsDir, id);
 		submissionsDir.mkdirs();
@@ -32,28 +32,28 @@ public class SubmissionsStorage {
 		}
 	}
 	
-	public void setStatus(String id, String status) throws IOException {
+	public synchronized void setStatus(String id, String status) throws IOException {
 		File submissionsDir = new File(workDir, "submissions");
 		File submissionDir = new File(submissionsDir, id);
 		File statusFile = new File(submissionDir, "status");
 		FileUtils.writeStringToFile(statusFile, status);
 	}
 	
-	public String getStatus(String id) throws IOException {
+	public synchronized String getStatus(String id) throws IOException {
 		File submissionsDir = new File(workDir, "submissions");
 		File submissionDir = new File(submissionsDir, id);
 		File statusFile = new File(submissionDir, "status");
 		return FileUtils.readFileToString(statusFile);
 	}
 
-	public void setResult(String id, SubmissionScore score) throws IOException {
+	public synchronized void setResult(String id, SubmissionScore score) throws IOException {
 		File submissionsDir = new File(workDir, "submissions");
 		File submissionDir = new File(submissionsDir, id);
 		File scoreFile = new File(submissionDir, "score");
 		FileUtils.writeStringToFile(scoreFile, mapper.writeValueAsString(score));
 	}
 	
-	public SubmissionScore getResult(String id) throws IOException {
+	public synchronized SubmissionScore getResult(String id) throws IOException {
 		File submissionsDir = new File(workDir, "submissions");
 		File submissionDir = new File(submissionsDir, id);
 		File scoreFile = new File(submissionDir, "score");
