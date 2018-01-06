@@ -30,6 +30,11 @@ apt-get install oracle-java8-installer -y
 #maven
 sudo apt-get install -y maven
 
+#create start service
+cp /vagrant/noi/install/noi /etc/init.d/noi
+chmod 700 /etc/init.d/noi
+update-rc.d noi defaults
+
 #judge project
 git clone https://github.com/pppepito86/sandbox.git /vagrant/sandbox
 git clone https://github.com/pppepito86/grader.git /vagrant/grader
