@@ -103,11 +103,11 @@ public class RestService {
 				file.getInputStream());
 		submissionsStorage.setStatus(submissionId, "running");
 		Runnable runnable = () -> {
-			TaskDetails taskTests = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()));
-			SubmissionGrader grader = new SubmissionGrader(taskTests, submissionFile.getAbsolutePath());
-			grader.grade();
-			SubmissionScore score = grader.getScore();
 			try {
+				TaskDetails taskTests = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()));
+				SubmissionGrader grader = new SubmissionGrader(taskTests, submissionFile.getAbsolutePath());
+				grader.grade();
+				SubmissionScore score = grader.getScore();
 				submissionsStorage.setStatus(submissionId, "finished");
 				submissionsStorage.setResult(submissionId, score);
 			} catch (Exception e) {
