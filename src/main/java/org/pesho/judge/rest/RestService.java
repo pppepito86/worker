@@ -113,6 +113,7 @@ public class RestService {
 			} catch (Exception e) {
 				e.printStackTrace();
 				try {
+					System.out.println("submission " + submissionId + " failed");
 					submissionsStorage.setStatus(submissionId, "failed");
 				} catch (Exception e2) {
 					System.out.println("FATAL ERROR");
