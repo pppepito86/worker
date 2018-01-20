@@ -56,11 +56,15 @@ public class RestService {
 			@RequestParam("checksum") String checksum) {
 		TaskDetails problem = problemsCache.getProblem(Integer.valueOf(problemId));
 		String current = problemsCache.getChecksum(Integer.valueOf(problemId));
+		System.out.println("problem current checksum " + checksum +", current " + current);
 		boolean exists = problem != null;
 		if (exists) {
 			if (checksum != null && !checksum.equals(current)) {
+				System.out.println("problem not found checksum");
 				return new ResponseEntity<>(HttpStatus.NOT_FOUND);
 			} else {
+				System.out.println("problem found");
+				System.out.println("problem not found");
 				return new ResponseEntity<>(problem, HttpStatus.OK);
 			}
 		} else {
