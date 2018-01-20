@@ -1,6 +1,7 @@
 package org.pesho.judge.problems;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Enumeration;
@@ -9,6 +10,7 @@ import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.pesho.grader.task.TaskDetails;
 import org.pesho.grader.task.TaskParser;
@@ -73,7 +75,26 @@ public class ProblemsStorage {
 		deleteProblem(id);
 		return storeProblem(id, is);
 	}
+
+	
+	public String getChecksum(int id) {
+		File problemsDir = new File(workDir, "problems");
+		File problemDir = new File(problemsDir, String.valueOf(id));
+		File testsFile = new File(problemDir, "problem.zip");
+		if (!testsFile.exists()) return null;
 		
+		return getChecksum(testsFile);
+	}
+
+	public String getChecksum(File file) {
+		try (FileInputStream fis = new FileInputStream(file)) {
+			return DigestUtils.md5Hex(fis);
+		} catch (IOException e) {
+			e.printStackTrace();
+			return "";
+		}
+	}
+	
 	public TaskDetails storeProblem(int id, InputStream is) {
 		File problemsDir = new File(workDir, "problems");
 		File problemDir = new File(problemsDir, String.valueOf(id));
@@ -100,12 +121,12 @@ public class ProblemsStorage {
 				}
 			}
 
-			File problemMetadata = new File(problemDir, "metadata.json");
 			TaskParser taskParser = new TaskParser(problemDir);
 			TaskDetails taskTests = TaskDetails.create(taskParser);
+
+			File problemMetadata = new File(problemDir, "metadata.json");
 			FileUtils.writeByteArrayToFile(problemMetadata, objectMapper.writeValueAsBytes(taskTests));
 			return taskTests;
-			
 		} catch (Exception e) {
 			throw new IllegalStateException("problem copying archive", e);
 		}

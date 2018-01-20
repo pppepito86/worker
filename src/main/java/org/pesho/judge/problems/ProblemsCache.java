@@ -42,6 +42,10 @@ public class ProblemsCache {
 		cache.remove(id);
 	}
 	
+	public String getChecksum(int id) {
+		return storage.getChecksum(id);
+	}
+	
 	public Collection<TaskDetails> listProblems() {
 		return cache.values();
 	}
