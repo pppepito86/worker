@@ -64,7 +64,7 @@ public class RestService {
 		}
 		
 		String current = problemsCache.getChecksum(Integer.valueOf(problemId));
-		if (checksum != null && !checksum.equals(current)) {
+		if (checksum.get() != null && checksum.get().equals(current)) {
 			return new ResponseEntity<>(problem, HttpStatus.OK);
 		} else {
 			return new ResponseEntity<>(HttpStatus.NOT_FOUND);
