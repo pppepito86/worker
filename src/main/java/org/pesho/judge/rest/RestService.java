@@ -1,6 +1,7 @@
 package org.pesho.judge.rest;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.util.Collection;
 import java.util.Optional;
 
@@ -44,8 +45,12 @@ public class RestService {
 	private SubmissionsStorage submissionsStorage;
 
 	@GetMapping("/health-check")
-	public String healthCheck() {
-		if (new SandboxExecutor().command("echo test").execute().getResult().getStatus() == CommandStatus.SUCCESS) {
+	public String healthCheck() throws Exception {
+		File dir = Files.createTempDirectory("health-check").toFile();
+		if (new SandboxExecutor()
+				.directory(dir)
+				.command("echo test")
+				.execute().getResult().getStatus() == CommandStatus.SUCCESS) {
 			return "ok";
 		} else {
 			return "failed";
