@@ -49,6 +49,7 @@ public class RestService {
 		File dir = Files.createTempDirectory("health-check").toFile();
 		if (new SandboxExecutor()
 				.directory(dir)
+				.timeout(0.1)
 				.command("echo test")
 				.execute().getResult().getStatus() == CommandStatus.SUCCESS) {
 			return "ok";
