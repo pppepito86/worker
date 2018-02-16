@@ -13,6 +13,8 @@ import org.pesho.grader.task.TaskDetails;
 import org.pesho.judge.daos.SubmissionDto;
 import org.pesho.judge.problems.ProblemsCache;
 import org.pesho.judge.problems.SubmissionsStorage;
+import org.pesho.sandbox.CommandStatus;
+import org.pesho.sandbox.SandboxExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -43,7 +45,11 @@ public class RestService {
 
 	@GetMapping("/health-check")
 	public String healthCheck() {
-		return "ok";
+		if (new SandboxExecutor().command("echo test").execute().getResult().getStatus() == CommandStatus.SUCCESS) {
+			return "ok";
+		} else {
+			return "failed";
+		}
 	}
 
 	@GetMapping("/problems")
