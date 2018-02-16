@@ -50,6 +50,7 @@ public class RestService {
 		if (new SandboxExecutor()
 				.directory(dir)
 				.timeout(0.1)
+				.clean(true)
 				.command("echo test")
 				.execute().getResult().getStatus() == CommandStatus.SUCCESS) {
 			return "ok";
