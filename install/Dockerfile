@@ -9,6 +9,7 @@ RUN apt-get update
 
 RUN apt-get install -y software-properties-common
 RUN apt-get install -y bc
+RUN apt-get install -y time
 
 RUN echo "oracle-java8-installer shared/accepted-oracle-license-v1-1 select true" | debconf-set-selections
 RUN echo "oracle-java8-installer shared/accepted-oracle-license-v1-1 seen true" | debconf-set-selections
