@@ -12,6 +12,9 @@ import java.util.zip.ZipFile;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
+import org.pesho.grader.compile.CppCompileStep;
+import org.pesho.grader.step.StepResult;
+import org.pesho.grader.step.Verdict;
 import org.pesho.grader.task.TaskDetails;
 import org.pesho.grader.task.TaskParser;
 import org.springframework.beans.factory.annotation.Value;
@@ -126,9 +129,26 @@ public class ProblemsStorage {
 
 			File problemMetadata = new File(problemDir, "metadata.json");
 			FileUtils.writeByteArrayToFile(problemMetadata, objectMapper.writeValueAsBytes(taskTests));
+			
+			if (taskParser.getCppChecker().exists()) {
+				System.out.println("building checker for problem: " + id);
+				buildChecker(taskParser.getCppChecker());
+			}
+			
 			return taskTests;
 		} catch (Exception e) {
 			throw new IllegalStateException("problem copying archive", e);
+		}
+	}
+
+	private void buildChecker(File cppChecker) {
+		CppCompileStep compile = new CppCompileStep(cppChecker);
+		compile.execute();
+		StepResult result = compile.getResult();
+		if (result.getVerdict() == Verdict.OK) {
+			System.out.println("Checker built successfully");
+		} else {
+			System.out.println("Checker build failed!");
 		}
 	}
 	
