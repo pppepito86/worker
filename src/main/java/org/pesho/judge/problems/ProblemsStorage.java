@@ -125,15 +125,16 @@ public class ProblemsStorage {
 			}
 
 			TaskParser taskParser = new TaskParser(problemDir);
+			if (taskParser.getCppChecker().exists()) {
+				System.out.println("building checker for problem: " + id);
+				buildChecker(taskParser.getCppChecker());
+				taskParser = new TaskParser(problemDir);
+			}
+			
 			TaskDetails taskTests = TaskDetails.create(taskParser);
 
 			File problemMetadata = new File(problemDir, "metadata.json");
 			FileUtils.writeByteArrayToFile(problemMetadata, objectMapper.writeValueAsBytes(taskTests));
-			
-			if (taskParser.getCppChecker().exists()) {
-				System.out.println("building checker for problem: " + id);
-				buildChecker(taskParser.getCppChecker());
-			}
 			
 			return taskTests;
 		} catch (Exception e) {
