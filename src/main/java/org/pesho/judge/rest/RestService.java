@@ -1,6 +1,7 @@
 package org.pesho.judge.rest;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Collection;
 import java.util.Optional;
@@ -8,8 +9,10 @@ import java.util.Optional;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.core.MediaType;
 
+import org.pesho.grader.GradeListener;
 import org.pesho.grader.SubmissionGrader;
 import org.pesho.grader.SubmissionScore;
+import org.pesho.grader.step.StepResult;
 import org.pesho.grader.task.TaskDetails;
 import org.pesho.judge.daos.SubmissionDto;
 import org.pesho.judge.problems.ProblemsCache;
@@ -33,8 +36,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1")
-public class RestService {
-
+public class RestService implements GradeListener {
+	
 	@Value("${work.dir}")
 	private String workDir;
 
@@ -125,38 +128,52 @@ public class RestService {
 			@RequestPart("file") MultipartFile file) throws Exception {
 		File submissionFile = submissionsStorage.storeSubmission(submissionId, file.getOriginalFilename(),
 				file.getInputStream());
-		submissionsStorage.setStatus(submissionId, "running");
+		scoreUpdated(submissionId, new SubmissionScore());
+
 		Runnable runnable = () -> {
 			try {
 				TaskDetails taskTests = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()));
-				SubmissionGrader grader = new SubmissionGrader(taskTests, submissionFile.getAbsolutePath());
+				SubmissionGrader grader = new SubmissionGrader(submissionId, taskTests, submissionFile.getAbsolutePath(), this);
 				grader.grade();
-				SubmissionScore score = grader.getScore();
-				submissionsStorage.setStatus(submissionId, "finished");
-				submissionsStorage.setResult(submissionId, score);
 			} catch (Exception e) {
 				e.printStackTrace();
 				try {
-					System.out.println("submission " + submissionId + " failed");
-					submissionsStorage.setStatus(submissionId, "failed");
-				} catch (Exception e2) {
-					System.out.println("FATAL ERROR");
-					e2.printStackTrace();
+					submissionsStorage.setResult(submissionId, null);
+				} catch (IOException e1) {
+					e1.printStackTrace();
 				}
 			}
 		};
 		new Thread(runnable).start();
 		return new ResponseEntity<>(HttpStatus.CREATED);
 	}
-
-	@GetMapping("/submissions/{submission_id}/status")
-	public String getStatus(@PathVariable("submission_id") String submissionId) throws Exception {
-		return submissionsStorage.getStatus(submissionId);
+	
+	@Override
+	public void addFinalScore(String verdict, double score) {
 	}
 	
+	@Override
+	public void addScoreStep(String step, StepResult result) {
+	}
+	
+	@Override
+	public void scoreUpdated(String submissionId, SubmissionScore score) {
+		try {
+			submissionsStorage.setResult(submissionId, score);		
+		} catch (IOException e1) {
+			try {
+				submissionsStorage.setResult(submissionId, score);
+			} catch (IOException e2) {
+				System.out.println("submission " + submissionId + " failed");
+			}
+		}
+	}
+
 	@GetMapping("/submissions/{submission_id}/score")
-	public SubmissionScore getScore(@PathVariable("submission_id") String submissionId) throws Exception {
-		return submissionsStorage.getResult(submissionId);
+	public ResponseEntity<?> getScore(@PathVariable("submission_id") String submissionId) throws Exception {
+		SubmissionScore score = submissionsStorage.getResult(submissionId);
+		if (score == null) return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+		return ResponseEntity.ok(score);
 	}
 	
 }
