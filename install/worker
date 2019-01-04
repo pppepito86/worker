@@ -1,8 +1,7 @@
 #!/bin/bash
 
 do_start() {
-  cd /vagrant/worker
-  mvn spring-boot:run >stdout 2>stderr &
+  mvn spring-boot:run -f /vagrant/worker/pom.xml >/vagrant/worker/stdout 2> /vagrant/worker/stderr &
 }
 do_stop() {
   killall java
