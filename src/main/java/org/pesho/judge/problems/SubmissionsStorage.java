@@ -50,13 +50,19 @@ public class SubmissionsStorage {
 		File submissionsDir = new File(workDir, "submissions");
 		File submissionDir = new File(submissionsDir, id);
 		File scoreFile = new File(submissionDir, "score");
-		FileUtils.writeStringToFile(scoreFile, mapper.writeValueAsString(score));
+		if (score != null) {
+			FileUtils.writeStringToFile(scoreFile, mapper.writeValueAsString(score));
+		} else {
+			scoreFile.delete();
+		}
 	}
 	
 	public synchronized SubmissionScore getResult(String id) throws IOException {
 		File submissionsDir = new File(workDir, "submissions");
 		File submissionDir = new File(submissionsDir, id);
 		File scoreFile = new File(submissionDir, "score");
+		if (!scoreFile.exists()) return null;
+		
 		String score = FileUtils.readFileToString(scoreFile);
 		return mapper.readValue(score, SubmissionScore.class);
 	}
