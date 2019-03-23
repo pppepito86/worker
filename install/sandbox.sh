@@ -17,7 +17,7 @@ fi
 
 OOM_START_COUNT=$(dmesg | egrep -i 'killed process' | wc -l)
 STARTTIME=`date +%s.%N`
-ulimit -s unlimited
+ulimit -s $MEMORY
 ulimit -m $MEMORY
 ulimit -v $MEMORY
 timeout --signal=KILL $TIMEOUT time -p -f "%U" -o time $COMMAND < $INPUT > $OUTPUT 2> $ERROR
