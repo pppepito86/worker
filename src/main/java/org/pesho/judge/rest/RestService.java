@@ -124,7 +124,7 @@ public class RestService implements GradeListener {
 	@PostMapping("/submissions/{submission_id}")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	public ResponseEntity<?> addSubmission(@PathVariable("submission_id") String submissionId,
-			@PathVariable("tl") Optional<Double> timeLimit,
+			@RequestParam("tl") Optional<Double> timeLimit,
 			@RequestPart(name = "metadata") Optional<SubmissionDto> submission,
 			@RequestPart("file") MultipartFile file) throws Exception {
 		File submissionFile = submissionsStorage.storeSubmission(submissionId, file.getOriginalFilename(),
