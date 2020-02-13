@@ -124,6 +124,7 @@ public class RestService implements GradeListener {
 	@PostMapping("/submissions/{submission_id}")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	public ResponseEntity<?> addSubmission(@PathVariable("submission_id") String submissionId,
+			@PathVariable("tl") Optional<Double> timeLimit,
 			@RequestPart(name = "metadata") Optional<SubmissionDto> submission,
 			@RequestPart("file") MultipartFile file) throws Exception {
 		File submissionFile = submissionsStorage.storeSubmission(submissionId, file.getOriginalFilename(),
@@ -133,7 +134,9 @@ public class RestService implements GradeListener {
 		Runnable runnable = () -> {
 			try {
 				TaskDetails taskTests = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()));
-				SubmissionGrader grader = new SubmissionGrader(submissionId, taskTests, submissionFile.getAbsolutePath(), this);
+				SubmissionGrader grader = timeLimit
+						.map(tl -> new SubmissionGrader(submissionId, taskTests, submissionFile.getAbsolutePath(), this, tl))
+						.orElse(new SubmissionGrader(submissionId, taskTests, submissionFile.getAbsolutePath(), this));
 				grader.grade();
 			} catch (Exception e) {
 				e.printStackTrace();
