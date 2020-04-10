@@ -17,9 +17,12 @@ fi
 
 OOM_START_COUNT=$(dmesg | egrep -i 'killed process' | wc -l)
 STARTTIME=`date +%s.%N`
-ulimit -s $MEMORY
-ulimit -m $MEMORY
-ulimit -v $MEMORY
+if [[ "$COMMAND" != java* ]] && [[ "$COMMAND" != jar* ]];
+then
+  ulimit -s $MEMORY
+  ulimit -m $MEMORY
+  ulimit -v $MEMORY
+fi
 timeout --signal=KILL $TIMEOUT time -p -f "%U" -o time $COMMAND < $INPUT > $OUTPUT 2> $ERROR
 echo $? > exitcode
 ENDTIME=`date +%s.%N`
