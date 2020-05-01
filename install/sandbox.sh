@@ -17,7 +17,7 @@ fi
 
 OOM_START_COUNT=$(dmesg | egrep -i 'killed process' | wc -l)
 STARTTIME=`date +%s.%N`
-if [[ "$COMMAND" != java* ]] && [[ "$COMMAND" != jar* ]];
+if [[ "$COMMAND" != java* ]] && [[ "$COMMAND" != jar* ]] && [[ "$COMMAND" != csc* ]] && [[ "$COMMAND" != mono* ]];
 then
   ulimit -s $MEMORY
   ulimit -m $MEMORY
