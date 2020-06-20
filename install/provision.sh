@@ -6,9 +6,45 @@ apt-get update
 
 apt-get install -y curl git gcc make python-dev vim-nox jq cgroup-lite silversearcher-ag
 
-#docker
-wget -qO- https://get.docker.com/ | sh
-docker pull pppepito86/judge
+
+git clone https://github.com/ioi/isolate.git /worker/isolate
+echo 0 > /proc/sys/kernel/randomize_va_space
+echo never > /sys/kernel/mm/transparent_hugepage/enabled
+echo never > /sys/kernel/mm/transparent_hugepage/defrag
+echo 0 > /sys/kernel/mm/transparent_hugepage/khugepaged/defrag
+
+apt install -y asciidoc
+apt-get install -y libcap-dev
+make -C /worker/isolate/ install
+
+#mv /worker/isolate/isolate /usr/bin/.
+cp /worker/isolate/default.cf /usr/local/etc/isolate
+
+apt install -ygcc-8 g++-8
+update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 80 --slave /usr/bin/g++ g++ /usr/bin/g++-8 --slave /usr/bin/gcov gcov /usr/bin/gcov-8
+
+#g++ -DEVAL -std=c++11 -O2 -pipe -static -s -o solution solution.cpp
+#isolate --run -M meta1 -m 266000 -t 1 -w 3 -x 1.5 -i input -o output -- ./solution
+
+isolate --cleanup -b 0
+isolate --init -b 0
+cp solution /var/local/lib/isolate/0/box/.
+cp input /var/local/lib/isolate/0/box/.
+
+#!/bin/bash
+
+for i in {1..20}
+do
+    ./isolate --run -M meta1 -m 266000 -t 1 -w 3 -x 1.5 -i substrings.08.in -o substrings.08.out -- ./solution
+
+    cat /vagrant/worker/./submissions/134_3_42/test/meta1|grep OK
+done
+
+
+
+
+
+
 
 #java
 apt-get purge openjdk*
@@ -21,6 +57,7 @@ sudo apt-get install -y maven
 git clone https://github.com/pppepito86/sandbox.git /vagrant/sandbox
 git clone https://github.com/pppepito86/grader.git /vagrant/grader
 git clone https://github.com/pppepito86/worker.git /vagrant/worker
+git -C /vagrant/sandbox checkout noi
 mvn install -f /vagrant/sandbox/pom.xml
 mvn install -f /vagrant/grader/pom.xml
 mvn install -f /vagrant/worker/pom.xml

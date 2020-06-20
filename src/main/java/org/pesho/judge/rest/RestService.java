@@ -54,7 +54,7 @@ public class RestService implements GradeListener {
 				.directory(dir)
 				.timeout(0.1)
 				.clean(true)
-				.command("echo test")
+				.command("/bin/echo test")
 				.execute().getResult().getStatus() == CommandStatus.SUCCESS) {
 			return "ok";
 		} else {
