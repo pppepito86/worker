@@ -138,6 +138,12 @@ public class ProblemsStorage {
 			
 			return taskTests;
 		} catch (Exception e) {
+			try {
+				FileUtils.deleteDirectory(problemDir);
+			} catch (IOException ex) {
+				System.out.println("Adding a new problem failed and we are unable to remove the created directory.");
+				ex.printStackTrace();
+			}
 			throw new IllegalStateException("problem copying archive", e);
 		}
 	}
