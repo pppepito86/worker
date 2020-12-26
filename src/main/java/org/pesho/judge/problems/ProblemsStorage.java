@@ -115,6 +115,10 @@ public class ProblemsStorage {
 				Enumeration<? extends ZipEntry> entries = zipFile.entries();
 				while (entries.hasMoreElements()) {
 					ZipEntry entry = entries.nextElement();
+					if (entry.getName().contains("__MACOSX")) {
+						System.out.println("Skipping MACOS system file: " + entry.getName());
+						continue;
+					}
 					File test = new File(problemDir, entry.getName());
 					if (entry.isDirectory()) {
 						test.mkdirs();
