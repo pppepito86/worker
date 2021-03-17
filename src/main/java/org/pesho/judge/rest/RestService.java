@@ -79,6 +79,7 @@ public class RestService implements GradeListener {
 		}
 		
 		String current = problemsCache.getChecksum(Integer.valueOf(problemId));
+		System.out.println("checksum for problem: " + problemId + " is: " + checksum);
 		if (checksum.get() != null && checksum.get().equals(current)) {
 			return new ResponseEntity<>(problem, HttpStatus.OK);
 		} else {
