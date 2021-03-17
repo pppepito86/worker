@@ -44,12 +44,9 @@ public class ProblemsStorage {
 				continue;
 			}
 
-			try {
-				TaskDetails details = objectMapper.readValue(problemMetadata, TaskDetails.class);
-				map.put(Integer.valueOf(problemDir.getName()), details);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+			TaskParser taskParser = new TaskParser(problemDir);
+			TaskDetails taskDetails = new TaskDetails(taskParser);
+			map.put(Integer.valueOf(problemDir.getName()), taskDetails);
 		}
 		return map;
 	}
