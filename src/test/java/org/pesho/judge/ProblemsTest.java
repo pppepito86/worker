@@ -46,10 +46,7 @@ public class ProblemsTest {
 	
 	@After
 	public void clean() throws Exception {
-		try {
-			FileUtils.forceDelete(new File(workDir));
-		} catch (Exception e) {
-		}
+		FileUtils.deleteQuietly(new File(workDir));
 	}
 
 	@Test
@@ -59,7 +56,7 @@ public class ProblemsTest {
 		MockMultipartFile multipartFile = new MockMultipartFile("file", "tests.zip", "text/plain", is);
 		this.mvc.perform(fileUpload("/api/v1/problems/1")
 				.file(multipartFile))
-				.andExpect(status().isCreated());
+				.andExpect(status().isOk());
 		
 		mvc.perform(get("/api/v1/problems"))
 				.andExpect(jsonPath("$", hasSize(1)));
