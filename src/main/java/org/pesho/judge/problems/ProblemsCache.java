@@ -12,12 +12,13 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class ProblemsCache {
 
-	@Autowired
 	private ProblemsStorage storage;
 	
 	private Hashtable<Integer, TaskDetails> cache = new Hashtable<>();
 	
-	public ProblemsCache() {
+	public ProblemsCache(@Autowired ProblemsStorage storage) {
+		this.storage = storage;
+		
 		load();
 	}
 	
