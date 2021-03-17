@@ -3,8 +3,7 @@ package org.pesho.judge.problems;
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.Hashtable;
-
-import javax.annotation.PostConstruct;
+import java.util.Map;
 
 import org.pesho.grader.task.TaskDetails;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,9 +17,14 @@ public class ProblemsCache {
 	
 	private Hashtable<Integer, TaskDetails> cache = new Hashtable<>();
 	
-    @PostConstruct
+	public ProblemsCache() {
+		load();
+	}
+	
     public void load(){
-    	storage.loadProblems().entrySet()
+    	Map<Integer, TaskDetails> problems = storage.loadProblems();
+    	System.out.println("loaded: " + problems);
+    	problems.entrySet()
     	.forEach(entry -> cache.put(entry.getKey(), entry.getValue()));
     }
 	
