@@ -41,11 +41,6 @@ public class ProblemsStorage {
 			
 			File problemMetadata = new File(problemDir, "metadata.json");
 			if (!problemMetadata.exists()) {
-				try {
-					FileUtils.forceDelete(problemDir);
-				}catch (IOException e) {
-					e.printStackTrace();
-				}
 				continue;
 			}
 
@@ -63,33 +58,24 @@ public class ProblemsStorage {
 		File problemsDir = new File(workDir, "problems");
 		File problemDir = new File(problemsDir, String.valueOf(id));
 		
-		if (!problemDir.exists()) {
-			return;
-		}
-		
-		try {
-			FileUtils.forceDelete(problemDir);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		FileUtils.deleteQuietly(problemDir);
 	}
 	
 	public TaskDetails updateProblem(int id, InputStream is) {
 		deleteProblem(id);
 		return storeProblem(id, is);
 	}
-
 	
 	public String getChecksum(int id) {
 		File problemsDir = new File(workDir, "problems");
 		File problemDir = new File(problemsDir, String.valueOf(id));
 		File testsFile = new File(problemDir, "problem.zip");
 		if (!testsFile.exists()) return null;
-		
+
 		return getChecksum(testsFile);
 	}
 
-	public String getChecksum(File file) {
+	public static String getChecksum(File file) {
 		try (FileInputStream fis = new FileInputStream(file)) {
 			return DigestUtils.md5Hex(fis);
 		} catch (IOException e) {

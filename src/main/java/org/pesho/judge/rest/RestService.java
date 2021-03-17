@@ -27,7 +27,6 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -93,22 +92,10 @@ public class RestService implements GradeListener {
 			@RequestPart("file") MultipartFile file) throws Exception {
 		if (problemsCache.getProblem(problemId) == null) {
 			problemsCache.addProblem(problemId, file.getInputStream());
-			return new ResponseEntity<>(HttpStatus.CREATED);
 		} else {
-			return new ResponseEntity<>(HttpStatus.CONFLICT);
-		}
-	}
-
-	@PutMapping("/problems/{problem_id}")
-	@Consumes(MediaType.MULTIPART_FORM_DATA)
-	public ResponseEntity<?> updateProblem(@PathVariable("problem_id") int problemId,
-			@RequestPart("file") MultipartFile file) throws Exception {
-		if (problemsCache.getProblem(problemId) != null) {
 			problemsCache.updateProblem(problemId, file.getInputStream());
-			return new ResponseEntity<>(HttpStatus.OK);
-		} else {
-			return new ResponseEntity<>(HttpStatus.NOT_FOUND);
 		}
+		return new ResponseEntity<>(HttpStatus.OK);
 	}
 
 	@DeleteMapping("/problems/{problem_id}")

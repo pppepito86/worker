@@ -20,13 +20,14 @@ public class ProblemsCache {
 	
     @PostConstruct
     public void load(){
-    	storage.loadProblems().entrySet().forEach(entry -> cache.put(entry.getKey(), entry.getValue()));
+    	storage.loadProblems().entrySet()
+    	.forEach(entry -> cache.put(entry.getKey(), entry.getValue()));
     }
 	
 	public TaskDetails getProblem(int id) {
 		return cache.get(id);
 	}
-	
+
 	public void addProblem(int id, InputStream is) {
 		TaskDetails taskTests = storage.storeProblem(id, is);
 		cache.put(id, taskTests);
