@@ -45,6 +45,8 @@ public class RestService implements GradeListener {
 
 	@Autowired
 	private SubmissionsStorage submissionsStorage;
+	
+	private static SubmissionGrader grader;
 
 	@GetMapping("/health-check")
 	public String healthCheck() throws Exception {
@@ -122,10 +124,11 @@ public class RestService implements GradeListener {
 		Runnable runnable = () -> {
 			try {
 				TaskDetails taskTests = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()));
-				SubmissionGrader grader = timeLimit
+				grader = timeLimit
 						.map(tl -> new SubmissionGrader(submissionId, taskTests, submissionFile.getAbsolutePath(), this, tl))
 						.orElse(new SubmissionGrader(submissionId, taskTests, submissionFile.getAbsolutePath(), this));
 				grader.grade();
+				grader = null;
 			} catch (Exception e) {
 				e.printStackTrace();
 				try {
@@ -158,6 +161,8 @@ public class RestService implements GradeListener {
 
 	@GetMapping("/submissions/{submission_id}/score")
 	public ResponseEntity<?> getScore(@PathVariable("submission_id") String submissionId) throws Exception {
+		if (grader != null) ResponseEntity.ok(grader.getScore());
+		
 		SubmissionScore score = submissionsStorage.getResult(submissionId);
 		if (score == null) return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
 		return ResponseEntity.ok(score);
