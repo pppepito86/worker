@@ -46,7 +46,7 @@ public class RestService implements GradeListener {
 	@Autowired
 	private SubmissionsStorage submissionsStorage;
 	
-	private static SubmissionGrader grader;
+	private static volatile SubmissionGrader grader;
 
 	@GetMapping("/health-check")
 	public String healthCheck() throws Exception {
@@ -128,7 +128,6 @@ public class RestService implements GradeListener {
 						.map(tl -> new SubmissionGrader(submissionId, taskTests, submissionFile.getAbsolutePath(), this, tl))
 						.orElse(new SubmissionGrader(submissionId, taskTests, submissionFile.getAbsolutePath(), this));
 				grader.grade();
-				grader = null;
 			} catch (Exception e) {
 				e.printStackTrace();
 				try {
