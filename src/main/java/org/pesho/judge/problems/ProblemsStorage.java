@@ -19,6 +19,7 @@ import org.pesho.grader.task.TaskDetails;
 import org.pesho.grader.task.TaskParser;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.zeroturnaround.exec.ProcessExecutor;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -94,18 +95,7 @@ public class ProblemsStorage {
 		try {
 			File testsFile = new File(problemDir, "problem.zip");
 			FileUtils.copyInputStreamToFile(is, testsFile);
-			try (ZipFile zipFile = new ZipFile(testsFile)) {
-				Enumeration<? extends ZipEntry> entries = zipFile.entries();
-				while (entries.hasMoreElements()) {
-					ZipEntry entry = entries.nextElement();
-					File test = new File(problemDir, entry.getName());
-					if (entry.isDirectory()) {
-						test.mkdirs();
-					} else {
-						FileUtils.copyInputStreamToFile(zipFile.getInputStream(entry), test);
-					}
-				}
-			}
+			unzip(testsFile, problemDir);
 
 			TaskParser taskParser = new TaskParser(problemDir);
 			if (taskParser.getCppChecker().exists()) {
@@ -133,6 +123,15 @@ public class ProblemsStorage {
 			System.out.println("Checker built successfully");
 		} else {
 			System.out.println("Checker build failed!");
+		}
+	}
+	
+	public static void unzip(File file, File folder) {
+		try {
+			new ProcessExecutor().command("unzip", file.getCanonicalPath(), "-d", folder.getCanonicalPath()).execute();
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new IllegalStateException(e);
 		}
 	}
 	

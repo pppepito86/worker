@@ -162,6 +162,7 @@ public class RestService implements GradeListener {
 	public ResponseEntity<?> getScore(@PathVariable("submission_id") String submissionId) throws Exception {
 		if (grader != null) ResponseEntity.ok(grader.getScore());
 		
+		System.out.println("grader is null");
 		SubmissionScore score = submissionsStorage.getResult(submissionId);
 		if (score == null) return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
 		return ResponseEntity.ok(score);
