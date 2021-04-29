@@ -4,11 +4,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
@@ -16,7 +13,6 @@ import org.pesho.grader.compile.CppCompileStep;
 import org.pesho.grader.step.StepResult;
 import org.pesho.grader.step.Verdict;
 import org.pesho.grader.task.TaskDetails;
-import org.pesho.grader.task.TaskParser;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.zeroturnaround.exec.ProcessExecutor;
@@ -45,8 +41,7 @@ public class ProblemsStorage {
 				continue;
 			}
 
-			TaskParser taskParser = new TaskParser(problemDir);
-			TaskDetails taskDetails = new TaskDetails(taskParser);
+			TaskDetails taskDetails = new TaskDetails("task", problemDir);
 			map.put(Integer.valueOf(problemDir.getName()), taskDetails);
 		}
 		return map;
@@ -97,19 +92,17 @@ public class ProblemsStorage {
 			FileUtils.copyInputStreamToFile(is, testsFile);
 			unzip(testsFile, problemDir);
 
-			TaskParser taskParser = new TaskParser(problemDir);
-			if (taskParser.getCppChecker().exists()) {
+			TaskDetails taskDetails = new TaskDetails("task", problemDir);
+			if (taskDetails.getChecker() != null && taskDetails.getChecker().toLowerCase().endsWith(".cpp")) {
 				System.out.println("building checker for problem: " + id);
-				buildChecker(taskParser.getCppChecker());
-				taskParser = new TaskParser(problemDir);
+				buildChecker(new File(taskDetails.getChecker()));
+				taskDetails = new TaskDetails("task", problemDir);
 			}
 			
-			TaskDetails taskTests = TaskDetails.create(taskParser);
-
 			File problemMetadata = new File(problemDir, "metadata.json");
-			FileUtils.writeByteArrayToFile(problemMetadata, objectMapper.writeValueAsBytes(taskTests));
+			FileUtils.writeByteArrayToFile(problemMetadata, objectMapper.writeValueAsBytes(taskDetails));
 			
-			return taskTests;
+			return taskDetails;
 		} catch (Exception e) {
 			throw new IllegalStateException("problem copying archive", e);
 		}
