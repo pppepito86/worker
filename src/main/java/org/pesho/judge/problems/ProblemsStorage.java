@@ -93,10 +93,9 @@ public class ProblemsStorage {
 			unzip(testsFile, problemDir);
 
 			TaskDetails taskDetails = new TaskDetails("task", problemDir);
-			if (taskDetails.getChecker() != null && taskDetails.getChecker().toLowerCase().endsWith(".cpp")) {
+			if (taskDetails.getCppChecker() != null) {
 				System.out.println("building checker for problem: " + id);
-				buildChecker(new File(taskDetails.getChecker()));
-				taskDetails = new TaskDetails("task", problemDir);
+				buildChecker(new File(taskDetails.getCppChecker()));
 			}
 			
 			File problemMetadata = new File(problemDir, "metadata.json");
