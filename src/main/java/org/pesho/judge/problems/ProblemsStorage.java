@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
@@ -108,7 +109,8 @@ public class ProblemsStorage {
 	}
 
 	private void buildChecker(File cppChecker) {
-		CppCompileStep compile = new CppCompileStep(cppChecker);
+		File parent = Optional.ofNullable(cppChecker.getParentFile()).filter(f -> f.getName().equalsIgnoreCase("checker")).orElse(null);
+		CppCompileStep compile = new CppCompileStep(cppChecker, parent);
 		compile.execute();
 		StepResult result = compile.getResult();
 		if (result.getVerdict() == Verdict.OK) {
