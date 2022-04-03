@@ -156,10 +156,6 @@ public class RestService implements GradeListener {
 	}
 	
 	@Override
-	public void addScoreStep(String step, StepResult result) {
-	}
-	
-	@Override
 	public void scoreUpdated(String submissionId, SubmissionScore score) {
 		try {
 			submissionsStorage.setResult(submissionId, score);		
@@ -177,6 +173,18 @@ public class RestService implements GradeListener {
 		SubmissionScore score = submissionsStorage.getResult(submissionId);
 		if (score == null) return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
 		return ResponseEntity.ok(score);
+	}
+
+	@Override
+	public void setCompileResult(StepResult compileResult) {
+	}
+
+	@Override
+	public void addTestResult(int testNumber, StepResult testResult) {
+	}
+
+	@Override
+	public void addGroupResult(int groupNumber, StepResult groupResult) {
 	}
 	
 }

@@ -16,7 +16,6 @@ import org.pesho.grader.compile.CppCompileStep;
 import org.pesho.grader.step.StepResult;
 import org.pesho.grader.step.Verdict;
 import org.pesho.grader.task.TaskDetails;
-import org.pesho.grader.task.TaskParser;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
@@ -128,19 +127,18 @@ public class ProblemsStorage {
 				}
 			}
 
-			TaskParser taskParser = new TaskParser(problemDir);
-			if (taskParser.getCppChecker().exists()) {
+			TaskDetails taskDetails = new TaskDetails(""+id, problemDir);
+
+			if (taskDetails.getCppChecker() != null) {
 				System.out.println("building checker for problem: " + id);
-				buildChecker(taskParser.getCppChecker());
-				taskParser = new TaskParser(problemDir);
+				buildChecker(new File(taskDetails.getCppChecker()));
+				taskDetails = new TaskDetails(""+id, problemDir);
 			}
 			
-			TaskDetails taskTests = TaskDetails.create(taskParser);
-
 			File problemMetadata = new File(problemDir, "metadata.json");
-			FileUtils.writeByteArrayToFile(problemMetadata, objectMapper.writeValueAsBytes(taskTests));
+			FileUtils.writeByteArrayToFile(problemMetadata, objectMapper.writeValueAsBytes(taskDetails));
 			
-			return taskTests;
+			return taskDetails;
 		} catch (Exception e) {
 			try {
 				FileUtils.deleteDirectory(problemDir);
