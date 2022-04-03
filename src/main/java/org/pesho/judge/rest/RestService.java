@@ -170,12 +170,10 @@ public class RestService implements GradeListener {
 
 	@Override
 	public void setCompileResult(StepResult compileResult) {
-		
 	}
 
 	@Override
 	public void addTestResult(int testNumber, StepResult testResult) {
-		
 	}
 
 	@Override
