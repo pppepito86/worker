@@ -98,6 +98,10 @@ public class ProblemsStorage {
 				System.out.println("building checker for problem: " + id);
 				buildChecker(new File(taskDetails.getCppChecker()));
 			}
+			if (taskDetails.getCppManager() != null) {
+				System.out.println("building manager for problem: " + id);
+				buildManager(new File(taskDetails.getCppManager()));
+			}
 			
 			File problemMetadata = new File(problemDir, "metadata.json");
 			FileUtils.writeByteArrayToFile(problemMetadata, objectMapper.writeValueAsBytes(taskDetails));
@@ -117,6 +121,18 @@ public class ProblemsStorage {
 			System.out.println("Checker built successfully");
 		} else {
 			System.out.println("Checker build failed!");
+		}
+	}
+
+	private void buildManager(File cppManager) {
+		File parent = Optional.ofNullable(cppManager.getParentFile()).filter(f -> f.getName().equalsIgnoreCase("manager")).orElse(null);
+		CppCompileStep compile = new CppCompileStep(cppManager, parent);
+		compile.execute();
+		StepResult result = compile.getResult();
+		if (result.getVerdict() == Verdict.OK) {
+			System.out.println("Manager built successfully");
+		} else {
+			System.out.println("Manager build failed!");
 		}
 	}
 	
