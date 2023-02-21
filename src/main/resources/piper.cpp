@@ -17,12 +17,16 @@ void error_message (string s, int code) {
 void communication_problem (int signal) {
     error_message("Violation of the protocol for communication!",1);
 }
+vector <int> fds;
 pair <int, int> make_process (char* grader) {
     pipes p;
     if ((pipe(p.pipeIn))||(pipe(p.pipeOut))) error_message("Pipe failed",-2);
     int pid=fork();
     if (pid<0) error_message("Fork failed",-3);
     else if (pid==0) {
+        for (auto fd : fds) {
+            close(fd);
+        }
         close(p.pipeOut[1]); close(p.pipeIn[0]);
         dup2(p.pipeOut[0],0);
         dup2(p.pipeIn[1],1);
@@ -35,12 +39,11 @@ pair <int, int> make_process (char* grader) {
     }
 }
 int main (int argc, char* argv[]) {
-    if (argc<4) error_message("Arguments: number_of_grader_processes name_of_manager_program name_of_grader_program",-1);
+    if (argc<4) error_message("Arguments: number_of_grader_processes name_of_manager_program name_of_grader_program_1 ... name_of_grader_program_n",-1);
     int processes=atoi(argv[1]);
     if ((argc>4)&&(argc!=3+processes)) error_message("If there is more than one name of grader program, the count of the names should match the number of processes",-1);
 
     signal(SIGPIPE,communication_problem);
-    vector <int> fds;
     for (int i=0; i<processes; i++) {
         char* grader;
         if (argc==4) grader=argv[3];
