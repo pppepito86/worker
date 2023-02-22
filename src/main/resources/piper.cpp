@@ -14,9 +14,7 @@ void error_message (string s, int code) {
     cerr << s << endl ;
     exit(code);
 }
-void communication_problem (int signal) {
-    error_message("Violation of the protocol for communication!",1);
-}
+
 vector <int> fds;
 pair <int, int> make_process (char* grader) {
     pipes p;
@@ -30,6 +28,7 @@ pair <int, int> make_process (char* grader) {
         close(p.pipeOut[1]); close(p.pipeIn[0]);
         dup2(p.pipeOut[0],0);
         dup2(p.pipeIn[1],1);
+        signal(SIGPIPE,SIG_IGN);
         execl(grader,grader,NULL);
         error_message("Exec failed",-4);
     }
@@ -43,7 +42,12 @@ int main (int argc, char* argv[]) {
     int processes=atoi(argv[1]);
     if ((argc>4)&&(argc!=3+processes)) error_message("If there is more than one name of grader program, the count of the names should match the number of processes",-1);
 
-    signal(SIGPIPE,communication_problem);
+    signal(SIGPIPE,[] (int signal) {
+        error_message("Violation of the protocol for communication!",0);
+    });
+    signal(SIGUSR1,[] (int signal) {
+        exit(0);
+    });
     for (int i=0; i<processes; i++) {
         char* grader;
         if (argc==4) grader=argv[3];
@@ -70,7 +74,6 @@ int main (int argc, char* argv[]) {
             sprintf(args[1+i],"%d",fds[i]);
         }
         args[fds.size()+1]=NULL;
-        signal(SIGPIPE,SIG_IGN);
         execv(manager,args);
         error_message("Exec failed",-4);
     }
