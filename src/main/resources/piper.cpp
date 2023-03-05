@@ -6,15 +6,16 @@
 #include<string>
 #include<vector>
 using namespace std;
+void error_message (string s, int code) {
+    cout << 0 << endl ;
+    cout << s << endl ;
+    exit(code);
+}
+
 struct pipes {
     int pipeIn[2];
     int pipeOut[2];
 };
-void error_message (string s, int code) {
-    cerr << s << endl ;
-    exit(code);
-}
-
 vector <int> fds;
 vector <int> children;
 int group=-1;
@@ -52,15 +53,14 @@ int count_digs (int num) {
     return cnt;
 }
 int main (int argc, char* argv[]) {
-    if (argc<4) error_message("Arguments: number_of_grader_processes name_of_manager_program name_of_grader_program",-1);
+    if (argc!=4) error_message("Arguments: number_of_grader_processes name_of_manager_program name_of_grader_program",-1);
     int processes=atoi(argv[1]);
     signal(SIGPIPE,[] (int signal) {
         error_message("Pipe error - violation of the protocol for communication!",0);
     });
     for (int i=0; i<processes; i++) {
         char* grader;
-        if (argc==4) grader=argv[3];
-        else grader=argv[3+i];
+        grader=argv[3];
         pair <int, int> res=make_process(grader);
         fds.push_back(res.first);
         fds.push_back(res.second);
