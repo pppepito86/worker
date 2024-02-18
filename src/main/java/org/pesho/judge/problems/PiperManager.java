@@ -2,8 +2,8 @@ package org.pesho.judge.problems;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
-import java.util.Optional;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 import org.pesho.grader.compile.CppCompileStep;
@@ -35,7 +35,11 @@ public class PiperManager {
 	}
 	
 	private void buildPiper() {
-		CppCompileStep compile = new CppCompileStep(piperFile, null);
+		Map<String, Double> time = new HashMap<>();
+		time.put("default", 10.);
+		Map<String, Integer> memory = new HashMap<>();
+		memory.put("default", 128);
+		CppCompileStep compile = new CppCompileStep(piperFile, null, time, memory);
 		compile.execute();
 		StepResult result = compile.getResult();
 		if (result.getVerdict() == Verdict.OK) {

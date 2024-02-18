@@ -113,8 +113,12 @@ public class ProblemsStorage {
 	}
 
 	private void buildChecker(File cppChecker) {
+		Map<String, Double> time = new HashMap<>();
+		time.put("default", 10.);
+		Map<String, Integer> memory = new HashMap<>();
+		memory.put("default", 512);
 		File parent = Optional.ofNullable(cppChecker.getParentFile()).filter(f -> f.getName().equalsIgnoreCase("checker")).orElse(null);
-		CppCompileStep compile = new CppCompileStep(cppChecker, parent);
+		CppCompileStep compile = new CppCompileStep(cppChecker, parent, time, memory);
 		compile.execute();
 		StepResult result = compile.getResult();
 		if (result.getVerdict() == Verdict.OK) {
@@ -125,8 +129,12 @@ public class ProblemsStorage {
 	}
 
 	private void buildManager(File cppManager) {
+		Map<String, Double> time = new HashMap<>();
+		time.put("default", 10.);
+		Map<String, Integer> memory = new HashMap<>();
+		memory.put("default", 512);
 		File parent = Optional.ofNullable(cppManager.getParentFile()).filter(f -> f.getName().equalsIgnoreCase("manager")).orElse(null);
-		CppCompileStep compile = new CppCompileStep(cppManager, parent);
+		CppCompileStep compile = new CppCompileStep(cppManager, parent, time, memory);
 		compile.execute();
 		StepResult result = compile.getResult();
 		if (result.getVerdict() == Verdict.OK) {

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Collection;
 import java.util.Optional;
+import java.util.Map;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.core.MediaType;
@@ -39,6 +40,9 @@ public class RestService implements GradeListener {
 	
 	@Value("${work.dir}")
 	private String workDir;
+
+	@Value("${piper.dir}")
+	private String piperDir;
 
 	@Autowired
 	private ProblemsCache problemsCache;
@@ -114,7 +118,8 @@ public class RestService implements GradeListener {
 	@PostMapping("/submissions/{submission_id}")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	public ResponseEntity<?> addSubmission(@PathVariable("submission_id") String submissionId,
-			@RequestParam("tl") Optional<Double> timeLimit,
+			@RequestParam("compileTL") Optional<Double> compileTime,
+			@RequestParam("compileML") Optional<Integer> compileMemory,
 			@RequestPart(name = "metadata") Optional<SubmissionDto> submission,
 			@RequestPart("file") MultipartFile file) throws Exception {
 		File submissionFile = submissionsStorage.storeSubmission(submissionId, file.getOriginalFilename(),
@@ -124,10 +129,8 @@ public class RestService implements GradeListener {
 		Runnable runnable = () -> {
 			try {
 				TaskDetails taskTests = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()));
-				grader = timeLimit
-						.map(tl -> new SubmissionGrader(submissionId, taskTests, submissionFile.getAbsolutePath(), this, tl))
-						.orElse(new SubmissionGrader(submissionId, taskTests, submissionFile.getAbsolutePath(), this));
-				grader.grade();
+				grader = new SubmissionGrader(submissionId, taskTests, submissionFile.getAbsolutePath(), this, compileTime, compileMemory);
+				grader.grade(workDir+"/"+piperDir);
 			} catch (Exception e) {
 				e.printStackTrace();
 				try {
