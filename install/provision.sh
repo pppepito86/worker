@@ -4,24 +4,28 @@ set -e -x
 
 apt-get update
 
-apt-get install -y curl git gcc make python-dev vim-nox jq cgroup-lite silversearcher-ag
+apt-get install -y curl git gcc make python-dev-is-python3 vim-nox jq cgroup-lite silversearcher-ag
 
 
-git clone https://github.com/ioi/isolate.git /worker/isolate
+git clone https://github.com/ioi/isolate.git /vagrant/worker/isolate
 echo 0 > /proc/sys/kernel/randomize_va_space
 echo never > /sys/kernel/mm/transparent_hugepage/enabled
 echo never > /sys/kernel/mm/transparent_hugepage/defrag
 echo 0 > /sys/kernel/mm/transparent_hugepage/khugepaged/defrag
 
-apt install -y asciidoc
+apt-get install -y asciidoc
 apt-get install -y libcap-dev
-make -C /worker/isolate/ install
+apt-get install -y pkg-config libsystemd-dev
+make -C /vagrant/worker/isolate/ install
 
-#mv /worker/isolate/isolate /usr/bin/.
-cp /worker/isolate/default.cf /usr/local/etc/isolate
+#mv /vagrant/worker/isolate/isolate /usr/bin/.
+cp /vagrant/worker/isolate/default.cf /usr/local/etc/isolate
+cp /vagrant/worker/isolate/systemd/isolate.service /etc/systemd/system/isolate.service
+systemctl enable isolate
+systemctl start isolate
 
-apt install -y gcc-8 g++-8
-update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 80 --slave /usr/bin/g++ g++ /usr/bin/g++-8 --slave /usr/bin/gcov gcov /usr/bin/gcov-8
+apt install -y gcc-11 g++-11
+update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 80 --slave /usr/bin/g++ g++ /usr/bin/g++-11 --slave /usr/bin/gcov gcov /usr/bin/gcov-11
 
 #g++ -DEVAL -std=c++11 -O2 -pipe -static -s -o solution solution.cpp
 #isolate --run -M meta1 -m 266000 -t 1 -w 3 -x 1.5 -i input -o output -- ./solution
