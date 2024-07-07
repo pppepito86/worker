@@ -61,6 +61,10 @@ sudo apt-get install -y maven
 git clone https://github.com/pppepito86/sandbox.git /vagrant/sandbox
 git clone https://github.com/pppepito86/grader.git /vagrant/grader
 git clone https://github.com/pppepito86/worker.git /vagrant/worker
+
+#copy config file
+cp /vagrant/worker/config/application.properties.sample /vagrant/worker/src/main/resources/application.properties
+
 git -C /vagrant/sandbox checkout noi
 mvn install -f /vagrant/sandbox/pom.xml
 mvn install -f /vagrant/grader/pom.xml
