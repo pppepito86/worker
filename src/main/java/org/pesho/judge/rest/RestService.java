@@ -3,9 +3,8 @@ package org.pesho.judge.rest;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Collection;
-import java.util.Optional;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.core.MediaType;
@@ -13,11 +12,11 @@ import javax.ws.rs.core.MediaType;
 import org.pesho.grader.GradeListener;
 import org.pesho.grader.SubmissionGrader;
 import org.pesho.grader.SubmissionScore;
-import org.pesho.grader.step.StepResult;
 import org.pesho.grader.task.TaskDetails;
 import org.pesho.judge.daos.SubmissionDto;
 import org.pesho.judge.problems.ProblemsCache;
 import org.pesho.judge.problems.SubmissionsStorage;
+import org.pesho.judge.problems.UserTestsStorage;
 import org.pesho.sandbox.CommandStatus;
 import org.pesho.sandbox.SandboxExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,8 +48,9 @@ public class RestService implements GradeListener {
 
 	@Autowired
 	private SubmissionsStorage submissionsStorage;
-	
-	private static volatile SubmissionGrader grader;
+
+	@Autowired
+	private UserTestsStorage userTestsStorage;
 
 	@GetMapping("/health-check")
 	public String healthCheck() throws Exception {
@@ -124,13 +124,13 @@ public class RestService implements GradeListener {
 			@RequestPart("file") MultipartFile file) throws Exception {
 		File submissionFile = submissionsStorage.storeSubmission(submissionId, file.getOriginalFilename(),
 				file.getInputStream());
-		scoreUpdated(submissionId, new SubmissionScore());
+		scoreUpdated(submissionId, new SubmissionScore("submission"));
 
 		Runnable runnable = () -> {
 			try {
 				TaskDetails taskTests = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()));
-				grader = new SubmissionGrader(submissionId, taskTests, submissionFile.getAbsolutePath(), this, compileTime, compileMemory);
-				grader.grade(workDir+"/"+piperDir);
+				SubmissionGrader grader = new SubmissionGrader(submissionId, taskTests, submissionFile.getAbsolutePath(), this, workDir+"/"+piperDir+"/piper", compileTime, compileMemory);
+				grader.grade();
 			} catch (Exception e) {
 				e.printStackTrace();
 				try {
@@ -143,44 +143,69 @@ public class RestService implements GradeListener {
 		new Thread(runnable).start();
 		return new ResponseEntity<>(HttpStatus.CREATED);
 	}
-	
-	@Override
-	public void addFinalScore(String verdict, double score) {
+
+	@PostMapping("/user_tests/{user_test_id}")
+	@Consumes(MediaType.MULTIPART_FORM_DATA)
+	public ResponseEntity<?> addUserTest(@PathVariable("user_test_id") String userTestId,
+			@RequestParam("compileTL") Optional<Double> compileTime,
+			@RequestParam("compileML") Optional<Integer> compileMemory,
+			@RequestPart(name = "metadata") Optional<SubmissionDto> submission,
+			@RequestPart("submission") MultipartFile submissionFile,
+			@RequestPart("input") MultipartFile[] inputFiles,
+			@RequestPart("output") MultipartFile[] outputFiles
+			) throws Exception {
+		Map<String, List<File>> files = userTestsStorage.storeUserTest(userTestId, submissionFile, Arrays.stream(inputFiles).collect(Collectors.toList()), Arrays.stream(outputFiles).collect(Collectors.toList()));
+		scoreUpdated(userTestId, new SubmissionScore("user_tests"));
+
+		Runnable runnable = () -> {
+			try {
+				TaskDetails details = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()));
+				SubmissionGrader grader = new SubmissionGrader(userTestId, details, files.get("submission").get(0).getAbsolutePath(), 
+					files.get("inputs").stream().map(f -> f.getAbsolutePath()).collect(Collectors.toList()),
+					files.get("outputs").stream().map(f -> f.getAbsolutePath()).collect(Collectors.toList()),
+					this, workDir+"/"+piperDir+"/piper", compileTime, compileMemory);
+				grader.grade();
+			} catch (Exception e) {
+				e.printStackTrace();
+				try {
+					userTestsStorage.setResult(userTestId, null);
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+			}
+		};
+		new Thread(runnable).start();
+		return new ResponseEntity<>(HttpStatus.CREATED);
 	}
 	
 	@Override
 	public void scoreUpdated(String submissionId, SubmissionScore score) {
 		try {
-			submissionsStorage.setResult(submissionId, score);		
+			if (score.getType().equals("submission")) submissionsStorage.setResult(submissionId, score);
+			if (score.getType().equals("user_tests")) userTestsStorage.setResult(submissionId, score);
 		} catch (IOException e1) {
 			try {
-				submissionsStorage.setResult(submissionId, score);
+				if (score.getType().equals("submission")) submissionsStorage.setResult(submissionId, score);
+				if (score.getType().equals("user_tests")) userTestsStorage.setResult(submissionId, score);
 			} catch (IOException e2) {
-				System.out.println("submission " + submissionId + " failed");
+				if (score.getType().equals("submission")) System.out.println("submission " + submissionId + " failed");
+				else if (score.getType().equals("user_tests")) System.out.println("user test " + submissionId + " failed");
+				else System.out.println("judging " + submissionId + " failed");
 			}
 		}
 	}
 
 	@GetMapping("/submissions/{submission_id}/score")
 	public ResponseEntity<?> getScore(@PathVariable("submission_id") String submissionId) throws Exception {
-		if (grader != null) ResponseEntity.ok(grader.getScore());
-		
-		System.out.println("grader is null");
 		SubmissionScore score = submissionsStorage.getResult(submissionId);
 		if (score == null) return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
 		return ResponseEntity.ok(score);
 	}
-
-	@Override
-	public void setCompileResult(StepResult compileResult) {
-	}
-
-	@Override
-	public void addTestResult(int testNumber, StepResult testResult) {
-	}
-
-	@Override
-	public void addGroupResult(int groupNumber, StepResult groupResult) {
-	}
 	
+	@GetMapping("/user_tests/{user_test_id}/score")
+	public ResponseEntity<?> getScoreUserTest(@PathVariable("user_test_id") String userTestId) throws Exception {
+		SubmissionScore score = userTestsStorage.getResult(userTestId);
+		if (score == null) return ResponseEntity.ok(score);
+		return ResponseEntity.ok(score);
+	}
 }

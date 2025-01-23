@@ -28,22 +28,8 @@ public class SubmissionsStorage {
 			FileUtils.copyInputStreamToFile(is, submissionFile);
 			return submissionFile;
 		} catch (Exception e) {
-			throw new IllegalStateException("problem copying archive", e);
+			throw new IllegalStateException("problem copying submission", e);
 		}
-	}
-	
-	public synchronized void setStatus(String id, String status) throws IOException {
-		File submissionsDir = new File(workDir, "submissions");
-		File submissionDir = new File(submissionsDir, id);
-		File statusFile = new File(submissionDir, "status");
-		FileUtils.writeStringToFile(statusFile, status);
-	}
-	
-	public synchronized String getStatus(String id) throws IOException {
-		File submissionsDir = new File(workDir, "submissions");
-		File submissionDir = new File(submissionsDir, id);
-		File statusFile = new File(submissionDir, "status");
-		return FileUtils.readFileToString(statusFile);
 	}
 
 	public synchronized void setResult(String id, SubmissionScore score) throws IOException {

@@ -24,8 +24,12 @@ cp /vagrant/worker/isolate/systemd/isolate.service /etc/systemd/system/isolate.s
 systemctl enable isolate
 systemctl start isolate
 
+#c++ and c
 apt install -y gcc-11 g++-11
 update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 80 --slave /usr/bin/g++ g++ /usr/bin/g++-11 --slave /usr/bin/gcov gcov /usr/bin/gcov-11
+
+#python
+apt-get install -y pypy3
 
 #g++ -DEVAL -std=c++11 -O2 -pipe -static -s -o solution solution.cpp
 #isolate --run -M meta1 -m 266000 -t 1 -w 3 -x 1.5 -i input -o output -- ./solution
