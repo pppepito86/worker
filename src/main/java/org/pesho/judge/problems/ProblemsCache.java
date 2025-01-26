@@ -24,7 +24,7 @@ public class ProblemsCache {
 	
     public void load(){
     	Map<Integer, TaskDetails> problems = storage.loadProblems();
-    	System.out.println("loaded: " + problems);
+    	//System.out.println("loaded: " + problems);
     	problems.entrySet()
     	.forEach(entry -> cache.put(entry.getKey(), entry.getValue()));
     }

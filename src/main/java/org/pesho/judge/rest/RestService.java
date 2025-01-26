@@ -118,6 +118,7 @@ public class RestService implements GradeListener {
 	@PostMapping("/submissions/{submission_id}")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	public ResponseEntity<?> addSubmission(@PathVariable("submission_id") String submissionId,
+			@RequestParam("isOfficial") Optional<Boolean> isOfficial,
 			@RequestParam("compileTL") Optional<Double> compileTime,
 			@RequestParam("compileML") Optional<Integer> compileMemory,
 			@RequestPart(name = "metadata") Optional<SubmissionDto> submission,
@@ -129,7 +130,7 @@ public class RestService implements GradeListener {
 		Runnable runnable = () -> {
 			try {
 				TaskDetails taskTests = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()));
-				SubmissionGrader grader = new SubmissionGrader(submissionId, taskTests, submissionFile.getAbsolutePath(), this, workDir+"/"+piperDir+"/piper", compileTime, compileMemory);
+				SubmissionGrader grader = new SubmissionGrader(submissionId, isOfficial, taskTests, submissionFile.getAbsolutePath(), this, workDir+"/"+piperDir+"/piper", compileTime, compileMemory);
 				grader.grade();
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -147,6 +148,7 @@ public class RestService implements GradeListener {
 	@PostMapping("/user_tests/{user_test_id}")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	public ResponseEntity<?> addUserTest(@PathVariable("user_test_id") String userTestId,
+			@RequestParam("isOfficial") Optional<Boolean> isOfficial,
 			@RequestParam("compileTL") Optional<Double> compileTime,
 			@RequestParam("compileML") Optional<Integer> compileMemory,
 			@RequestPart(name = "metadata") Optional<SubmissionDto> submission,
@@ -160,7 +162,7 @@ public class RestService implements GradeListener {
 		Runnable runnable = () -> {
 			try {
 				TaskDetails details = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()));
-				SubmissionGrader grader = new SubmissionGrader(userTestId, details, files.get("submission").get(0).getAbsolutePath(), 
+				SubmissionGrader grader = new SubmissionGrader(userTestId, isOfficial, details, files.get("submission").get(0).getAbsolutePath(), 
 					files.get("inputs").stream().map(f -> f.getAbsolutePath()).collect(Collectors.toList()),
 					files.get("outputs").stream().map(f -> f.getAbsolutePath()).collect(Collectors.toList()),
 					this, workDir+"/"+piperDir+"/piper", compileTime, compileMemory);
@@ -205,7 +207,7 @@ public class RestService implements GradeListener {
 	@GetMapping("/user_tests/{user_test_id}/score")
 	public ResponseEntity<?> getScoreUserTest(@PathVariable("user_test_id") String userTestId) throws Exception {
 		SubmissionScore score = userTestsStorage.getResult(userTestId);
-		if (score == null) return ResponseEntity.ok(score);
+		if (score == null) return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
 		return ResponseEntity.ok(score);
 	}
 }
