@@ -71,5 +71,11 @@ public class UserTestsStorage {
 		String score = FileUtils.readFileToString(scoreFile);
 		return mapper.readValue(score, SubmissionScore.class);
 	}
+
+	public File getUserOutputFile(String id) {
+		File userTestsDir = new File(workDir, "user_tests");
+		File userTestDir = new File(userTestsDir, id);
+		return new File(userTestDir, "test_user_out");
+	}
 	
 }

@@ -2,6 +2,7 @@ package org.pesho.judge.rest;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -9,6 +10,7 @@ import java.util.stream.Collectors;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.core.MediaType;
 
+import org.apache.commons.io.FileUtils;
 import org.pesho.grader.GradeListener;
 import org.pesho.grader.SubmissionGrader;
 import org.pesho.grader.SubmissionScore;
@@ -209,5 +211,12 @@ public class RestService implements GradeListener {
 		SubmissionScore score = userTestsStorage.getResult(userTestId);
 		if (score == null) return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
 		return ResponseEntity.ok(score);
+	}
+
+	@GetMapping("/user_tests/{user_test_id}/user_output")
+	public ResponseEntity<?> getUserTestUserOutputFile(@PathVariable("user_test_id") String userTestId) throws Exception {
+		File userOutputFile = userTestsStorage.getUserOutputFile(userTestId);
+		if (!userOutputFile.exists()) return ResponseEntity.ok("");
+		return ResponseEntity.ok(FileUtils.readFileToString(userOutputFile, Charset.forName("UTF-8")));
 	}
 }
