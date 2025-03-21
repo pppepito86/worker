@@ -1,8 +1,8 @@
 package org.pesho.judge.rest;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -10,7 +10,6 @@ import java.util.stream.Collectors;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.core.MediaType;
 
-import org.apache.commons.io.FileUtils;
 import org.pesho.grader.GradeListener;
 import org.pesho.grader.SubmissionGrader;
 import org.pesho.grader.SubmissionScore;
@@ -23,7 +22,9 @@ import org.pesho.sandbox.CommandStatus;
 import org.pesho.sandbox.SandboxExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -216,7 +217,13 @@ public class RestService implements GradeListener {
 	@GetMapping("/user_tests/{user_test_id}/user_output")
 	public ResponseEntity<?> getUserTestUserOutputFile(@PathVariable("user_test_id") String userTestId) throws Exception {
 		File userOutputFile = userTestsStorage.getUserOutputFile(userTestId);
-		if (!userOutputFile.exists()) return ResponseEntity.ok("");
-		return ResponseEntity.ok(FileUtils.readFileToString(userOutputFile, Charset.forName("UTF-8")));
+		if (!userOutputFile.exists()) return ResponseEntity.ok(null);
+		InputStreamResource inputStreamResource = new InputStreamResource(new FileInputStream(userOutputFile));
+		org.springframework.http.MediaType mediaType = org.springframework.http.MediaType.APPLICATION_OCTET_STREAM;
+		return ResponseEntity.ok()
+				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=test_user_out")
+				.contentLength(userOutputFile.length())
+				.contentType(mediaType)
+				.body(inputStreamResource);
 	}
-}
+	}
