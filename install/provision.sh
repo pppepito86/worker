@@ -6,6 +6,18 @@ apt-get update
 
 apt-get install -y curl git gcc make python-dev-is-python3 vim-nox jq cgroup-lite silversearcher-ag
 
+#latex and fonts
+apt-get install fontforge
+apt-get install cabextract
+wget https://gist.githubusercontent.com/maxwelleite/10774746/raw/ttf-vista-fonts-installer.sh -q -O - | sudo bash
+apt-get install ttf-mscorefonts-installer
+apt-get install latexmk
+apt-get install texlive-lang-cyrillic
+#generate tfm files for 10pt, 11pt and 12pt
+mktextfm larm1000
+mktextfm larm1095
+mktextfm larm1200
+fc-cache -fv
 
 git clone https://github.com/ioi/isolate.git /vagrant/worker/isolate
 echo 0 > /proc/sys/kernel/randomize_va_space
