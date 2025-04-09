@@ -10,6 +10,7 @@ apt-get install -y curl git gcc make python-dev-is-python3 vim-nox jq cgroup-lit
 apt-get install fontforge
 apt-get install cabextract
 wget https://gist.githubusercontent.com/maxwelleite/10774746/raw/ttf-vista-fonts-installer.sh -q -O - | sudo bash
+apt install fonts-noto-color-emoji
 apt-get install ttf-mscorefonts-installer
 apt-get install latexmk
 apt-get install texlive-lang-cyrillic
