@@ -7,13 +7,16 @@ apt-get update
 apt-get install -y curl git gcc make python-dev-is-python3 vim-nox jq cgroup-lite silversearcher-ag
 
 #latex and fonts
-apt-get install fontforge
-apt-get install cabextract
+apt-get install -y fontforge
+apt-get install -y cabextract
 wget https://gist.githubusercontent.com/maxwelleite/10774746/raw/ttf-vista-fonts-installer.sh -q -O - | sudo bash
-apt install fonts-noto-color-emoji
-apt-get install ttf-mscorefonts-installer
-apt-get install latexmk
-apt-get install texlive-lang-cyrillic
+apt-get install -y fonts-noto-color-emoji
+apt-get install -y ttf-mscorefonts-installer
+apt-get install -y latexmk
+apt-get install -y texlive-luatex texlive-xetex
+apt-get install -y texlive-science
+apt-get install -y texlive-latex-recommended
+apt-get install -y texlive-lang-cyrillic
 #generate tfm files for 10pt, 11pt and 12pt
 mktextfm larm1000
 mktextfm larm1095
@@ -38,13 +41,13 @@ systemctl enable isolate
 systemctl start isolate
 
 #c++ and c
-apt install -y gcc-11 g++-11
-update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 80 --slave /usr/bin/g++ g++ /usr/bin/g++-11 --slave /usr/bin/gcov gcov /usr/bin/gcov-11
+apt install -y gcc-14 g++-14
+update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 80 --slave /usr/bin/g++ g++ /usr/bin/g++-14 --slave /usr/bin/gcov gcov /usr/bin/gcov-14
 
 #python
 apt-get install -y pypy3
 
-#g++ -DEVAL -std=c++11 -O2 -pipe -static -s -o solution solution.cpp
+#g++ -DEVAL -std=c++20 -O2 -pipe -static -s -o solution solution.cpp
 #isolate --run -M meta1 -m 266000 -t 1 -w 3 -x 1.5 -i input -o output -- ./solution
 
 isolate --cleanup -b 0
