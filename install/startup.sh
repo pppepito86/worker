@@ -2,6 +2,13 @@
 
 set -e -x
 
+echo off > /sys/devices/system/cpu/smt/control
+echo 0 > /proc/sys/kernel/randomize_va_space
+echo never > /sys/kernel/mm/transparent_hugepage/enabled
+echo never > /sys/kernel/mm/transparent_hugepage/defrag
+echo 0 > /sys/kernel/mm/transparent_hugepage/khugepaged/defrag
+echo core >/proc/sys/kernel/core_pattern
+
 git -C /vagrant/sandbox checkout noi
 git -C /vagrant/sandbox pull
 mvn install -f /vagrant/sandbox/pom.xml
