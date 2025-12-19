@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.core.MediaType;
@@ -55,18 +56,28 @@ public class RestService implements GradeListener {
 	@Autowired
 	private UserTestsStorage userTestsStorage;
 
+	private final ReentrantLock lock = new ReentrantLock();
+	
 	@GetMapping("/health-check")
-	public String healthCheck() throws Exception {
-		File dir = Files.createTempDirectory("health-check").toFile();
-		if (new SandboxExecutor()
-				.directory(dir)
-				.timeout(0.1)
-				.clean(true)
-				.command("/bin/echo test")
-				.execute().getResult().getStatus() == CommandStatus.SUCCESS) {
-			return "ok";
-		} else {
+	public String healthCheck() {
+		if (!lock.tryLock()) return "not-free";
+		try {
+			File dir = Files.createTempDirectory("health-check").toFile();
+			if (new SandboxExecutor()
+					.directory(dir)
+					.timeout(0.1)
+					.clean(true)
+					.command("/bin/echo test")
+					.execute().getResult().getStatus() == CommandStatus.SUCCESS) {
+				return "ok";
+			} else {
+				return "failed";
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
 			return "failed";
+		} finally {
+			lock.unlock();
 		}
 	}
 
@@ -120,7 +131,7 @@ public class RestService implements GradeListener {
 
 	@PostMapping("/submissions/{submission_id}")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
-	public ResponseEntity<?> addSubmission(@PathVariable("submission_id") String submissionId,
+	public synchronized ResponseEntity<?> addSubmission(@PathVariable("submission_id") String submissionId,
 			@RequestParam("isOfficial") Optional<Boolean> isOfficial,
 			@RequestParam("compileTL") Optional<Double> compileTime,
 			@RequestParam("compileML") Optional<Integer> compileMemory,
@@ -132,6 +143,7 @@ public class RestService implements GradeListener {
 
 		Runnable runnable = () -> {
 			try {
+				lock.lock();
 				TaskDetails taskTests = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()));
 				SubmissionGrader grader = new SubmissionGrader(submissionId, isOfficial, taskTests, submissionFile.getAbsolutePath(), this, workDir+"/"+piperDir+"/piper", compileTime, compileMemory);
 				grader.grade();
@@ -142,6 +154,8 @@ public class RestService implements GradeListener {
 				} catch (IOException e1) {
 					e1.printStackTrace();
 				}
+			} finally {
+				lock.unlock();
 			}
 		};
 		new Thread(runnable).start();
@@ -150,7 +164,7 @@ public class RestService implements GradeListener {
 
 	@PostMapping("/user_tests/{user_test_id}")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
-	public ResponseEntity<?> addUserTest(@PathVariable("user_test_id") String userTestId,
+	public synchronized ResponseEntity<?> addUserTest(@PathVariable("user_test_id") String userTestId,
 			@RequestParam("isOfficial") Optional<Boolean> isOfficial,
 			@RequestParam("compileTL") Optional<Double> compileTime,
 			@RequestParam("compileML") Optional<Integer> compileMemory,
@@ -164,6 +178,7 @@ public class RestService implements GradeListener {
 
 		Runnable runnable = () -> {
 			try {
+				lock.lock();
 				TaskDetails details = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()));
 				SubmissionGrader grader = new SubmissionGrader(userTestId, isOfficial, details, files.get("submission").get(0).getAbsolutePath(), 
 					files.get("inputs").stream().map(f -> f.getAbsolutePath()).collect(Collectors.toList()),
@@ -177,6 +192,8 @@ public class RestService implements GradeListener {
 				} catch (IOException e1) {
 					e1.printStackTrace();
 				}
+			} finally {
+				lock.unlock();
 			}
 		};
 		new Thread(runnable).start();
