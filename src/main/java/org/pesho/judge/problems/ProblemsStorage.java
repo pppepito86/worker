@@ -28,8 +28,8 @@ public class ProblemsStorage {
 
 	private ObjectMapper objectMapper = new ObjectMapper();
 
-	public Map<Integer, TaskDetails> loadProblems() {
-		Map<Integer, TaskDetails> map = new HashMap<>();
+	public Map<String, TaskDetails> loadProblems() {
+		Map<String, TaskDetails> map = new HashMap<>();
 		File problemsDir = new File(workDir, "problems");
 		File[] problemsDirs = problemsDir.listFiles();
 		if (problemsDirs == null) return map;
@@ -43,26 +43,33 @@ public class ProblemsStorage {
 			}
 
 			TaskDetails taskDetails = new TaskDetails("task", problemDir);
-			map.put(Integer.valueOf(problemDir.getName()), taskDetails);
+			map.put(problemDir.getName(), taskDetails);
 		}
 		return map;
 	}
 
-	public void deleteProblem(int id) {
+	public String getProblemDir (int problemId, Optional<String> instanceId) {
+		return instanceId.isPresent() ? String.valueOf(problemId) + "_" + instanceId.get() : String.valueOf(problemId);
+	}
+
+	public File getProblemDirFile (int problemId, Optional<String> instanceId) {
 		File problemsDir = new File(workDir, "problems");
-		File problemDir = new File(problemsDir, String.valueOf(id));
-		
+		File problemDir = new File(problemsDir, getProblemDir(problemId, instanceId));
+		return problemDir;
+	}
+
+	public void deleteProblem(int id, Optional<String> instanceId) {
+		File problemDir = getProblemDirFile(id, instanceId);
 		FileUtils.deleteQuietly(problemDir);
 	}
 	
-	public TaskDetails updateProblem(int id, InputStream is) {
-		deleteProblem(id);
-		return storeProblem(id, is);
+	public TaskDetails updateProblem(int id, Optional<String> instanceId, InputStream is) {
+		deleteProblem(id, instanceId);
+		return storeProblem(id, instanceId, is);
 	}
-	
-	public String getChecksum(int id) {
-		File problemsDir = new File(workDir, "problems");
-		File problemDir = new File(problemsDir, String.valueOf(id));
+
+	public String getChecksum(int id, Optional<String> instanceId) {
+		File problemDir = getProblemDirFile(id, instanceId);
 		File testsFile = new File(problemDir, "problem.zip");
 		if (!testsFile.exists()) return null;
 
@@ -77,10 +84,9 @@ public class ProblemsStorage {
 			return "";
 		}
 	}
-	
-	public TaskDetails storeProblem(int id, InputStream is) {
-		File problemsDir = new File(workDir, "problems");
-		File problemDir = new File(problemsDir, String.valueOf(id));
+
+	public TaskDetails storeProblem(int id, Optional<String> instanceId, InputStream is) {
+		File problemDir = getProblemDirFile(id, instanceId);
 		
 		if (problemDir.exists()) {
 			throw new IllegalStateException("Problem already exists.");
@@ -94,14 +100,24 @@ public class ProblemsStorage {
 			unzip(testsFile, problemDir);
 
 			TaskDetails taskDetails = new TaskDetails("task", problemDir);
+			boolean hasError = false;
 			if (taskDetails.getCppChecker() != null) {
-				System.out.println("building checker for problem: " + id);
-				buildChecker(new File(taskDetails.getCppChecker()));
+				System.out.println("Building checker for problem: " + id);
+				String error = buildChecker(new File(taskDetails.getCppChecker()));
+				if (error != null) {
+					hasError = true;
+					taskDetails.addError("checker_compile", error);
+				}
 			}
 			if (taskDetails.getCppManager() != null) {
-				System.out.println("building manager for problem: " + id);
-				buildManager(new File(taskDetails.getCppManager()));
+				System.out.println("Building manager for problem: " + id);
+				String error = buildManager(new File(taskDetails.getCppManager()));
+				if (error != null) {
+					hasError = true;
+					taskDetails.addError("manager_compile", error);
+				}
 			}
+			if (hasError) FileUtils.deleteQuietly(testsFile);
 			
 			File problemMetadata = new File(problemDir, "metadata.json");
 			FileUtils.writeByteArrayToFile(problemMetadata, objectMapper.writeValueAsBytes(taskDetails));
@@ -112,7 +128,7 @@ public class ProblemsStorage {
 		}
 	}
 
-	private void buildChecker(File cppChecker) {
+	private String buildChecker(File cppChecker) {
 		Map<String, Double> time = new HashMap<>();
 		time.put("default", 10.);
 		Map<String, Integer> memory = new HashMap<>();
@@ -123,12 +139,14 @@ public class ProblemsStorage {
 		StepResult result = compile.getResult();
 		if (result.getVerdict() == Verdict.OK) {
 			System.out.println("Checker built successfully");
+			return null;
 		} else {
 			System.out.println("Checker build failed!");
+			return result.getReason();
 		}
 	}
 
-	private void buildManager(File cppManager) {
+	private String buildManager(File cppManager) {
 		Map<String, Double> time = new HashMap<>();
 		time.put("default", 10.);
 		Map<String, Integer> memory = new HashMap<>();
@@ -139,8 +157,10 @@ public class ProblemsStorage {
 		StepResult result = compile.getResult();
 		if (result.getVerdict() == Verdict.OK) {
 			System.out.println("Manager built successfully");
+			return null;
 		} else {
 			System.out.println("Manager build failed!");
+			return result.getReason();
 		}
 	}
 	

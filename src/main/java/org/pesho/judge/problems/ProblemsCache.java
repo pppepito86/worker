@@ -4,6 +4,7 @@ import java.io.InputStream;
 import java.util.Collection;
 import java.util.Hashtable;
 import java.util.Map;
+import java.util.Optional;
 
 import org.pesho.grader.task.TaskDetails;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +15,7 @@ public class ProblemsCache {
 
 	private ProblemsStorage storage;
 	
-	private Hashtable<Integer, TaskDetails> cache = new Hashtable<>();
+	private Hashtable<String, TaskDetails> cache = new Hashtable<>();
 	
 	public ProblemsCache(@Autowired ProblemsStorage storage) {
 		this.storage = storage;
@@ -22,34 +23,33 @@ public class ProblemsCache {
 		load();
 	}
 	
-    public void load(){
-    	Map<Integer, TaskDetails> problems = storage.loadProblems();
-    	//System.out.println("loaded: " + problems);
-    	problems.entrySet()
-    	.forEach(entry -> cache.put(entry.getKey(), entry.getValue()));
-    }
+	public void load(){
+		Map<String, TaskDetails> problems = storage.loadProblems();
+		//System.out.println("loaded: " + problems);
+		problems.entrySet().forEach(entry -> cache.put(entry.getKey(), entry.getValue()));
+	}
+
+	public TaskDetails getProblem(int id, Optional<String> instanceId) {
+		return cache.get(storage.getProblemDir(id, instanceId));
+	}
+
+	public void addProblem(int id, Optional<String> instanceId, InputStream is) {
+		TaskDetails taskTests = storage.storeProblem(id, instanceId, is);
+		cache.put(storage.getProblemDir(id, instanceId), taskTests);
+	}
+
+	public void updateProblem(int id, Optional<String> instanceId, InputStream is) {
+		TaskDetails taskTests = storage.updateProblem(id, instanceId, is);
+		cache.put(storage.getProblemDir(id, instanceId), taskTests);
+	}
+
+	public void removeProblem(int id, Optional<String> instanceId) {
+		storage.deleteProblem(id, instanceId);
+		cache.remove(storage.getProblemDir(id, instanceId));
+	}
 	
-	public TaskDetails getProblem(int id) {
-		return cache.get(id);
-	}
-
-	public void addProblem(int id, InputStream is) {
-		TaskDetails taskTests = storage.storeProblem(id, is);
-		cache.put(id, taskTests);
-	}
-
-	public void updateProblem(int id, InputStream is) {
-		TaskDetails taskTests = storage.updateProblem(id, is);
-		cache.put(id, taskTests);
-	}
-
-	public void removeProblem(int id) {
-		storage.deleteProblem(id);
-		cache.remove(id);
-	}
-	
-	public String getChecksum(int id) {
-		return storage.getChecksum(id);
+	public String getChecksum(int id, Optional<String> instanceId) {
+		return storage.getChecksum(id, instanceId);
 	}
 	
 	public Collection<TaskDetails> listProblems() {

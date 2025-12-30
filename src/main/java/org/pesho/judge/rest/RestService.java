@@ -88,8 +88,9 @@ public class RestService implements GradeListener {
 
 	@GetMapping("/problems/{problem_id}")
 	public ResponseEntity<?> getProblem(@PathVariable("problem_id") int problemId,
+			@RequestParam("instanceId") Optional<String> instanceId,
 			@RequestParam("checksum") Optional<String> checksum) {
-		TaskDetails problem = problemsCache.getProblem(Integer.valueOf(problemId));
+		TaskDetails problem = problemsCache.getProblem(Integer.valueOf(problemId), instanceId);
 		if (problem == null) {
 			return new ResponseEntity<>(HttpStatus.NOT_FOUND);
 		}
@@ -98,8 +99,7 @@ public class RestService implements GradeListener {
 			return new ResponseEntity<>(problem, HttpStatus.OK);
 		}
 		
-		String current = problemsCache.getChecksum(Integer.valueOf(problemId));
-		System.out.println("checksum for problem: " + problemId + " is: " + checksum);
+		String current = problemsCache.getChecksum(Integer.valueOf(problemId), instanceId);
 		if (checksum.get() != null && checksum.get().equals(current)) {
 			return new ResponseEntity<>(problem, HttpStatus.OK);
 		} else {
@@ -110,19 +110,28 @@ public class RestService implements GradeListener {
 	@PostMapping("/problems/{problem_id}")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	public ResponseEntity<?> addProblem(@PathVariable("problem_id") int problemId,
+			@RequestParam("instanceId") Optional<String> instanceId,
 			@RequestPart("file") MultipartFile file) throws Exception {
-		if (problemsCache.getProblem(problemId) == null) {
-			problemsCache.addProblem(problemId, file.getInputStream());
+		if (problemsCache.getProblem(problemId, instanceId) == null) {
+			problemsCache.addProblem(problemId, instanceId, file.getInputStream());
 		} else {
-			problemsCache.updateProblem(problemId, file.getInputStream());
+			problemsCache.updateProblem(problemId, instanceId, file.getInputStream());
 		}
+		TaskDetails problem = problemsCache.getProblem(Integer.valueOf(problemId), instanceId);
+		if (problem == null) {
+			return new ResponseEntity<>(HttpStatus.NOT_MODIFIED);
+		}
+		Map<String, String> errors = new HashMap<>(problem.getError());
+		errors.keySet().removeIf(t -> !t.equals("checker_compile") && !t.equals("manager_compile"));
+		if (!errors.isEmpty()) return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
 		return new ResponseEntity<>(HttpStatus.OK);
 	}
 
 	@DeleteMapping("/problems/{problem_id}")
-	public ResponseEntity<?> deleteProblem(@PathVariable("problem_id") int problemId) throws Exception {
-		if (problemsCache.getProblem(problemId) != null) {
-			problemsCache.removeProblem(problemId);
+	public ResponseEntity<?> deleteProblem(@PathVariable("problem_id") int problemId,
+			@RequestParam("instanceId") Optional<String> instanceId) throws Exception {
+		if (problemsCache.getProblem(problemId, instanceId) != null) {
+			problemsCache.removeProblem(problemId, instanceId);
 			return new ResponseEntity<>(HttpStatus.OK);
 		} else {
 			return new ResponseEntity<>(HttpStatus.NOT_FOUND);
@@ -132,9 +141,11 @@ public class RestService implements GradeListener {
 	@PostMapping("/submissions/{submission_id}")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	public synchronized ResponseEntity<?> addSubmission(@PathVariable("submission_id") String submissionId,
+			@RequestParam("instanceId") Optional<String> instanceId,
 			@RequestParam("isOfficial") Optional<Boolean> isOfficial,
 			@RequestParam("compileTL") Optional<Double> compileTime,
 			@RequestParam("compileML") Optional<Integer> compileMemory,
+			@RequestParam("points") Optional<Double> points,
 			@RequestPart(name = "metadata") Optional<SubmissionDto> submission,
 			@RequestPart("file") MultipartFile file) throws Exception {
 		File submissionFile = submissionsStorage.storeSubmission(submissionId, file.getOriginalFilename(),
@@ -144,8 +155,8 @@ public class RestService implements GradeListener {
 		Runnable runnable = () -> {
 			try {
 				lock.lock();
-				TaskDetails taskTests = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()));
-				SubmissionGrader grader = new SubmissionGrader(submissionId, isOfficial, taskTests, submissionFile.getAbsolutePath(), this, workDir+"/"+piperDir+"/piper", compileTime, compileMemory);
+				TaskDetails taskTests = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()), instanceId);
+				SubmissionGrader grader = new SubmissionGrader(submissionId, isOfficial, taskTests, submissionFile.getAbsolutePath(), this, workDir+"/"+piperDir+"/piper", compileTime, compileMemory, points);
 				grader.grade();
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -165,6 +176,7 @@ public class RestService implements GradeListener {
 	@PostMapping("/user_tests/{user_test_id}")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	public synchronized ResponseEntity<?> addUserTest(@PathVariable("user_test_id") String userTestId,
+			@RequestParam("instanceId") Optional<String> instanceId,
 			@RequestParam("isOfficial") Optional<Boolean> isOfficial,
 			@RequestParam("compileTL") Optional<Double> compileTime,
 			@RequestParam("compileML") Optional<Integer> compileMemory,
@@ -179,7 +191,7 @@ public class RestService implements GradeListener {
 		Runnable runnable = () -> {
 			try {
 				lock.lock();
-				TaskDetails details = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()));
+				TaskDetails details = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()), instanceId);
 				SubmissionGrader grader = new SubmissionGrader(userTestId, isOfficial, details, files.get("submission").get(0).getAbsolutePath(), 
 					files.get("inputs").stream().map(f -> f.getAbsolutePath()).collect(Collectors.toList()),
 					files.get("outputs").stream().map(f -> f.getAbsolutePath()).collect(Collectors.toList()),
