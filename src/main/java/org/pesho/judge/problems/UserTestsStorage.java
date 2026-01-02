@@ -24,7 +24,7 @@ public class UserTestsStorage {
 	@Value("${work.dir}")
 	private String workDir;
 
-	public synchronized Map<String, List<File>> storeUserTest(String id, MultipartFile submission, List<MultipartFile> inputs, List<MultipartFile> outputs) {
+	public synchronized Map<String, List<File>> storeUserTest(String id, MultipartFile submission, List<MultipartFile> inputs, List<MultipartFile> outputs) throws Exception {
 		File userTestsDir = new File(workDir, "user_tests");
 		File userTestDir = new File(userTestsDir, id);
 		userTestDir.mkdirs();

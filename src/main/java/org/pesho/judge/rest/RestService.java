@@ -111,45 +111,67 @@ public class RestService implements GradeListener {
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	public ResponseEntity<?> addProblem(@PathVariable("problem_id") int problemId,
 			@RequestParam("instanceId") Optional<String> instanceId,
-			@RequestPart("file") MultipartFile file) throws Exception {
-		if (problemsCache.getProblem(problemId, instanceId) == null) {
-			problemsCache.addProblem(problemId, instanceId, file.getInputStream());
-		} else {
-			problemsCache.updateProblem(problemId, instanceId, file.getInputStream());
+			@RequestPart("file") MultipartFile file) {
+		try {
+			lock.lock();
+			System.out.println("Adding problem " + problemId + " from instance " + instanceId);
+			if (problemsCache.getProblem(problemId, instanceId) == null) {
+				problemsCache.addProblem(problemId, instanceId, file.getInputStream());
+			} else {
+				problemsCache.updateProblem(problemId, instanceId, file.getInputStream());
+			}
+			TaskDetails problem = problemsCache.getProblem(Integer.valueOf(problemId), instanceId);
+			if (problem == null) {
+				return new ResponseEntity<>(HttpStatus.NOT_MODIFIED);
+			}
+			Map<String, String> errors = new HashMap<>(problem.getError());
+			errors.keySet().removeIf(t -> !t.equals("checker_compile") && !t.equals("manager_compile"));
+			if (!errors.isEmpty()) return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
+			return new ResponseEntity<>(HttpStatus.OK);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+		} finally {
+			lock.unlock();
 		}
-		TaskDetails problem = problemsCache.getProblem(Integer.valueOf(problemId), instanceId);
-		if (problem == null) {
-			return new ResponseEntity<>(HttpStatus.NOT_MODIFIED);
-		}
-		Map<String, String> errors = new HashMap<>(problem.getError());
-		errors.keySet().removeIf(t -> !t.equals("checker_compile") && !t.equals("manager_compile"));
-		if (!errors.isEmpty()) return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
-		return new ResponseEntity<>(HttpStatus.OK);
 	}
 
 	@DeleteMapping("/problems/{problem_id}")
 	public ResponseEntity<?> deleteProblem(@PathVariable("problem_id") int problemId,
-			@RequestParam("instanceId") Optional<String> instanceId) throws Exception {
-		if (problemsCache.getProblem(problemId, instanceId) != null) {
-			problemsCache.removeProblem(problemId, instanceId);
-			return new ResponseEntity<>(HttpStatus.OK);
-		} else {
-			return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+			@RequestParam("instanceId") Optional<String> instanceId) {
+		try {
+			lock.lock();
+			if (problemsCache.getProblem(problemId, instanceId) != null) {
+				problemsCache.removeProblem(problemId, instanceId);
+				return new ResponseEntity<>(HttpStatus.OK);
+			} else {
+				return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+		} finally {
+			lock.unlock();
 		}
 	}
 
 	@PostMapping("/submissions/{submission_id}")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
-	public synchronized ResponseEntity<?> addSubmission(@PathVariable("submission_id") String submissionId,
+	public ResponseEntity<?> addSubmission(@PathVariable("submission_id") String submissionId,
 			@RequestParam("instanceId") Optional<String> instanceId,
 			@RequestParam("isOfficial") Optional<Boolean> isOfficial,
 			@RequestParam("compileTL") Optional<Double> compileTime,
 			@RequestParam("compileML") Optional<Integer> compileMemory,
 			@RequestParam("points") Optional<Double> points,
 			@RequestPart(name = "metadata") Optional<SubmissionDto> submission,
-			@RequestPart("file") MultipartFile file) throws Exception {
-		File submissionFile = submissionsStorage.storeSubmission(submissionId, file.getOriginalFilename(),
-				file.getInputStream());
+			@RequestPart("file") MultipartFile file) {
+		File submissionFile;
+		try {
+			submissionFile = submissionsStorage.storeSubmission(submissionId, file.getOriginalFilename(), file.getInputStream());
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+		}
 		scoreUpdated(submissionId, new SubmissionScore("submission"));
 
 		Runnable runnable = () -> {
@@ -175,7 +197,7 @@ public class RestService implements GradeListener {
 
 	@PostMapping("/user_tests/{user_test_id}")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
-	public synchronized ResponseEntity<?> addUserTest(@PathVariable("user_test_id") String userTestId,
+	public ResponseEntity<?> addUserTest(@PathVariable("user_test_id") String userTestId,
 			@RequestParam("instanceId") Optional<String> instanceId,
 			@RequestParam("isOfficial") Optional<Boolean> isOfficial,
 			@RequestParam("compileTL") Optional<Double> compileTime,
@@ -184,8 +206,14 @@ public class RestService implements GradeListener {
 			@RequestPart("submission") MultipartFile submissionFile,
 			@RequestPart("input") MultipartFile[] inputFiles,
 			@RequestPart("output") MultipartFile[] outputFiles
-			) throws Exception {
-		Map<String, List<File>> files = userTestsStorage.storeUserTest(userTestId, submissionFile, Arrays.stream(inputFiles).collect(Collectors.toList()), Arrays.stream(outputFiles).collect(Collectors.toList()));
+			) {
+		Map<String, List<File>> files;
+		try {
+			files = userTestsStorage.storeUserTest(userTestId, submissionFile, Arrays.stream(inputFiles).collect(Collectors.toList()), Arrays.stream(outputFiles).collect(Collectors.toList()));
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+		}
 		scoreUpdated(userTestId, new SubmissionScore("user_tests"));
 
 		Runnable runnable = () -> {
@@ -217,42 +245,54 @@ public class RestService implements GradeListener {
 		try {
 			if (score.getType().equals("submission")) submissionsStorage.setResult(submissionId, score);
 			if (score.getType().equals("user_tests")) userTestsStorage.setResult(submissionId, score);
-		} catch (IOException e1) {
-			try {
-				if (score.getType().equals("submission")) submissionsStorage.setResult(submissionId, score);
-				if (score.getType().equals("user_tests")) userTestsStorage.setResult(submissionId, score);
-			} catch (IOException e2) {
-				if (score.getType().equals("submission")) System.out.println("submission " + submissionId + " failed");
-				else if (score.getType().equals("user_tests")) System.out.println("user test " + submissionId + " failed");
-				else System.out.println("judging " + submissionId + " failed");
-			}
+		} catch (IOException e) {
+			e.printStackTrace();
+			if (score.getType().equals("submission")) System.out.println("Updating score for submission " + submissionId + " failed");
+			else if (score.getType().equals("user_tests")) System.out.println("Updating score for user test " + submissionId + " failed");
+			else System.out.println("judging " + submissionId + " failed");
 		}
 	}
 
 	@GetMapping("/submissions/{submission_id}/score")
-	public ResponseEntity<?> getScore(@PathVariable("submission_id") String submissionId) throws Exception {
-		SubmissionScore score = submissionsStorage.getResult(submissionId);
-		if (score == null) return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
-		return ResponseEntity.ok(score);
+	public ResponseEntity<?> getScore(@PathVariable("submission_id") String submissionId) {
+		try {
+			SubmissionScore score = submissionsStorage.getResult(submissionId);
+			if (score == null) return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+			return ResponseEntity.ok(score);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+		}
 	}
 	
 	@GetMapping("/user_tests/{user_test_id}/score")
-	public ResponseEntity<?> getScoreUserTest(@PathVariable("user_test_id") String userTestId) throws Exception {
-		SubmissionScore score = userTestsStorage.getResult(userTestId);
-		if (score == null) return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
-		return ResponseEntity.ok(score);
+	public ResponseEntity<?> getScoreUserTest(@PathVariable("user_test_id") String userTestId) {
+		try {
+			SubmissionScore score = userTestsStorage.getResult(userTestId);
+			if (score == null) return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+			return ResponseEntity.ok(score);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+		}
 	}
 
 	@GetMapping("/user_tests/{user_test_id}/user_output")
-	public ResponseEntity<?> getUserTestUserOutputFile(@PathVariable("user_test_id") String userTestId) throws Exception {
+	public ResponseEntity<?> getUserTestUserOutputFile(@PathVariable("user_test_id") String userTestId) {
 		File userOutputFile = userTestsStorage.getUserOutputFile(userTestId);
 		if (!userOutputFile.exists()) return ResponseEntity.ok(null);
-		InputStreamResource inputStreamResource = new InputStreamResource(new FileInputStream(userOutputFile));
-		org.springframework.http.MediaType mediaType = org.springframework.http.MediaType.APPLICATION_OCTET_STREAM;
-		return ResponseEntity.ok()
-				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=test_user_out")
-				.contentLength(userOutputFile.length())
-				.contentType(mediaType)
-				.body(inputStreamResource);
+		try {
+			InputStreamResource inputStreamResource = new InputStreamResource(new FileInputStream(userOutputFile));
+			org.springframework.http.MediaType mediaType = org.springframework.http.MediaType.APPLICATION_OCTET_STREAM;
+			return ResponseEntity.ok()
+					.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=test_user_out")
+					.contentLength(userOutputFile.length())
+					.contentType(mediaType)
+					.body(inputStreamResource);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+		}
 	}
-	}
+
+}

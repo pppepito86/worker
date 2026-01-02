@@ -19,7 +19,7 @@ public class SubmissionsStorage {
 	@Value("${work.dir}")
 	private String workDir;
 
-	public synchronized File storeSubmission(String id, String name, InputStream is) {
+	public synchronized File storeSubmission(String id, String name, InputStream is) throws Exception {
 		File submissionsDir = new File(workDir, "submissions");
 		File submissionDir = new File(submissionsDir, id);
 		submissionsDir.mkdirs();
