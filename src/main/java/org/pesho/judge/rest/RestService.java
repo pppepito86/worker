@@ -202,11 +202,13 @@ public class RestService implements GradeListener {
 			@RequestParam("isOfficial") Optional<Boolean> isOfficial,
 			@RequestParam("compileTL") Optional<Double> compileTime,
 			@RequestParam("compileML") Optional<Integer> compileMemory,
-			@RequestPart(name = "metadata") Optional<SubmissionDto> submission,
+			@RequestPart("metadata") Optional<SubmissionDto> submission,
 			@RequestPart("submission") MultipartFile submissionFile,
-			@RequestPart("input") MultipartFile[] inputFiles,
-			@RequestPart("output") MultipartFile[] outputFiles
+			@RequestPart(name="input", required=false) MultipartFile[] inputFiles,
+			@RequestPart(name="output", required=false) MultipartFile[] outputFiles
 			) {
+		if (inputFiles == null) inputFiles = new MultipartFile[0];
+		if (outputFiles == null) outputFiles = new MultipartFile[0];
 		Map<String, List<File>> files;
 		try {
 			files = userTestsStorage.storeUserTest(userTestId, submissionFile, Arrays.stream(inputFiles).collect(Collectors.toList()), Arrays.stream(outputFiles).collect(Collectors.toList()));

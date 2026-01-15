@@ -7,6 +7,6 @@ piper.dir=piper
 server.compression.enabled=true
 server.compression.mime-types=application/json,application/xml,text/html,text/xml,text/plain
 
-spring.http.multipart.max-file-size=512MB
-spring.http.multipart.max-request-size=512MB
+spring.servlet.multipart.max-file-size=512MB
+spring.servlet.multipart.max-request-size=512MB
 server.connection-timeout=120000
