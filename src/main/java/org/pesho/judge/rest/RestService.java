@@ -6,14 +6,20 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
+import java.net.InetAddress;
+import java.sql.Timestamp;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.core.MediaType;
 
 import org.pesho.grader.GradeListener;
 import org.pesho.grader.SubmissionGrader;
 import org.pesho.grader.SubmissionScore;
+import org.pesho.grader.step.StepResult;
 import org.pesho.grader.task.TaskDetails;
 import org.pesho.judge.daos.SubmissionDto;
 import org.pesho.judge.problems.ProblemsCache;
@@ -37,6 +43,16 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
+import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+
 @RestController
 @RequestMapping("/api/v1")
 public class RestService implements GradeListener {
@@ -56,7 +72,20 @@ public class RestService implements GradeListener {
 	@Autowired
 	private UserTestsStorage userTestsStorage;
 
+	private Map<String, String> instancesURLs = new ConcurrentHashMap<>();
+
 	private final ReentrantLock lock = new ReentrantLock();
+
+	private List<AbstractMap.Entry<Integer,StepResult>> updates = new ArrayList<>();
+	private long lastUpdate = 0L;
+	private final long minimumUpdateTime = 500L;
+
+	private ObjectMapper mapper = new ObjectMapper();
+
+	public RestService () {
+		mapper.registerModule(new JavaTimeModule());
+		mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+	}
 	
 	@GetMapping("/health-check")
 	public String healthCheck() {
@@ -164,30 +193,43 @@ public class RestService implements GradeListener {
 			@RequestParam("compileML") Optional<Integer> compileMemory,
 			@RequestParam("points") Optional<Double> points,
 			@RequestPart(name = "metadata") Optional<SubmissionDto> submission,
-			@RequestPart("file") MultipartFile file) {
+			@RequestPart("file") MultipartFile file,
+			@RequestPart("update_time") Optional<Timestamp> updateTime,
+			HttpServletRequest request) {
+		instanceId.ifPresent(id -> {
+			String remoteHost = request.getRemoteHost(), port = request.getHeader("X-Client-Port");
+			boolean isIP = false;
+			try {
+				InetAddress addr = InetAddress.getByName(remoteHost);
+				isIP = remoteHost.equals(addr.getHostAddress());
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			instancesURLs.put(id, isIP ? "http://" + request.getRemoteAddr() + (port != null ? ":" + port : "") : "https://" + remoteHost);
+		});
+
+		String id = submissionId + "_" + new Random().nextInt(100);
 		File submissionFile;
 		try {
-			submissionFile = submissionsStorage.storeSubmission(submissionId, file.getOriginalFilename(), file.getInputStream());
+			submissionFile = submissionsStorage.storeSubmission(submissionId, id, file.getOriginalFilename(), file.getInputStream(), updateTime.orElse(new Timestamp (0)));
 		} catch (Exception e) {
 			e.printStackTrace();
 			return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
 		}
-		scoreUpdated(submissionId, new SubmissionScore("submission"));
+		scoreUpdatedWithBlocking(id, new SubmissionScore("submission"));
 
 		Runnable runnable = () -> {
 			try {
 				lock.lock();
+				updates.clear();
+				lastUpdate = System.currentTimeMillis() - minimumUpdateTime;
 				TaskDetails taskTests = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()), instanceId);
-				SubmissionGrader grader = new SubmissionGrader(submissionId, isOfficial, taskTests, submissionFile.getAbsolutePath(), this, workDir+"/"+piperDir+"/piper", compileTime, compileMemory, points);
+				SubmissionGrader grader = new SubmissionGrader(id, isOfficial, taskTests, submissionFile.getAbsolutePath(), this, workDir+"/"+piperDir+"/piper", compileTime, compileMemory, points);
 				grader.grade();
 			} catch (Exception e) {
 				e.printStackTrace();
-				try {
-					submissionsStorage.setResult(submissionId, null);
-				} catch (IOException e1) {
-					e1.printStackTrace();
-				}
 			} finally {
+				submissionsStorage.removeBlock(submissionId);
 				lock.unlock();
 			}
 		};
@@ -205,54 +247,166 @@ public class RestService implements GradeListener {
 			@RequestPart("metadata") Optional<SubmissionDto> submission,
 			@RequestPart("submission") MultipartFile submissionFile,
 			@RequestPart(name="input", required=false) MultipartFile[] inputFiles,
-			@RequestPart(name="output", required=false) MultipartFile[] outputFiles
-			) {
+			@RequestPart(name="output", required=false) MultipartFile[] outputFiles,
+			@RequestPart("update_time") Optional<Timestamp> updateTime,
+			HttpServletRequest request) {
 		if (inputFiles == null) inputFiles = new MultipartFile[0];
 		if (outputFiles == null) outputFiles = new MultipartFile[0];
+		instanceId.ifPresent(id -> {
+			String remoteHost = request.getRemoteHost(), port = request.getHeader("X-Client-Port");
+			boolean isIP = false;
+			try {
+				InetAddress addr = InetAddress.getByName(remoteHost);
+				isIP = remoteHost.equals(addr.getHostAddress());
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			instancesURLs.put(id, isIP ? "http://" + request.getRemoteAddr() + (port != null ? ":" + port : "") : "https://" + remoteHost);
+		});
+
+		String id = userTestId + "_" + new Random().nextInt(100);
 		Map<String, List<File>> files;
 		try {
-			files = userTestsStorage.storeUserTest(userTestId, submissionFile, Arrays.stream(inputFiles).collect(Collectors.toList()), Arrays.stream(outputFiles).collect(Collectors.toList()));
+			files = userTestsStorage.storeUserTest(userTestId, id, submissionFile, Arrays.stream(inputFiles).collect(Collectors.toList()), Arrays.stream(outputFiles).collect(Collectors.toList()), updateTime.orElse(new Timestamp(0)));
 		} catch (Exception e) {
 			e.printStackTrace();
 			return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
 		}
-		scoreUpdated(userTestId, new SubmissionScore("user_tests"));
+		scoreUpdatedWithBlocking(id, new SubmissionScore("user_tests"));
 
 		Runnable runnable = () -> {
 			try {
 				lock.lock();
+				updates.clear();
+				lastUpdate = System.currentTimeMillis() - minimumUpdateTime;
 				TaskDetails details = problemsCache.getProblem(Integer.valueOf(submission.get().getProblemId()), instanceId);
-				SubmissionGrader grader = new SubmissionGrader(userTestId, isOfficial, details, files.get("submission").get(0).getAbsolutePath(), 
+				SubmissionGrader grader = new SubmissionGrader(id, isOfficial, details, files.get("submission").get(0).getAbsolutePath(), 
 					files.get("inputs").stream().map(f -> f.getAbsolutePath()).collect(Collectors.toList()),
 					files.get("outputs").stream().map(f -> f.getAbsolutePath()).collect(Collectors.toList()),
 					this, workDir+"/"+piperDir+"/piper", compileTime, compileMemory);
 				grader.grade();
 			} catch (Exception e) {
 				e.printStackTrace();
-				try {
-					userTestsStorage.setResult(userTestId, null);
-				} catch (IOException e1) {
-					e1.printStackTrace();
-				}
 			} finally {
+				userTestsStorage.removeBlock(userTestId);
 				lock.unlock();
 			}
 		};
 		new Thread(runnable).start();
 		return new ResponseEntity<>(HttpStatus.CREATED);
 	}
-	
-	@Override
-	public void scoreUpdated(String submissionId, SubmissionScore score) {
-		try {
-			if (score.getType().equals("submission")) submissionsStorage.setResult(submissionId, score);
-			if (score.getType().equals("user_tests")) userTestsStorage.setResult(submissionId, score);
+
+	@PostMapping("/submissions/{submission_id}/block")
+	public ResponseEntity<?> submissionsBlock(
+		@PathVariable("submission_id") String submissionId,
+		@RequestPart("update_time") Timestamp updateTime) {
+		submissionsStorage.block(submissionId, updateTime);
+		System.out.println("Blocked submission " + submissionId + " until update time " + updateTime);
+		return new ResponseEntity<>(HttpStatus.CREATED);
+	}
+
+	@PostMapping("/user_tests/{user_test_id}/block")
+	public ResponseEntity<?> userTestsBlock(
+		@PathVariable("user_test_id") String userTestId,
+		@RequestPart("update_time") Timestamp updateTime) {
+		userTestsStorage.block(userTestId, updateTime);
+		System.out.println("Blocked user test " + userTestId + " until update time " + updateTime);
+		return new ResponseEntity<>(HttpStatus.CREATED);
+	}
+
+	private boolean updateScoreContest (String id, RequestBody requestBody, String api) {
+		if (id.split("_").length < 2) return false;
+		String instanceId = id.split("_")[1];
+		String url = instancesURLs.get(instanceId);
+		if (url == null) return false;
+		Request request = new Request.Builder()
+			.url(url + api)
+			.addHeader("X-Instance-Id", instanceId)
+			.post(requestBody)
+			.build();
+		OkHttpClient client = new OkHttpClient().newBuilder()
+			.connectTimeout(10, TimeUnit.MINUTES)
+			.readTimeout(10, TimeUnit.MINUTES)
+			.writeTimeout(10, TimeUnit.MINUTES)
+			.build();
+		try (Response response = client.newCall(request).execute()) {
+			if (!response.isSuccessful()) {
+				System.out.println("Updating score to " + url + " with API " + api + " failed with code " + response.code());
+				return false;
+			}
+			return true;
 		} catch (IOException e) {
 			e.printStackTrace();
-			if (score.getType().equals("submission")) System.out.println("Updating score for submission " + submissionId + " failed");
-			else if (score.getType().equals("user_tests")) System.out.println("Updating score for user test " + submissionId + " failed");
-			else System.out.println("judging " + submissionId + " failed");
+			System.out.println("Updating score to " + url + " with API " + api + " failed");
+			return false;
 		}
+	}
+
+	private void updateStepContest (String id, String type, int number, StepResult result) {
+		updates.add(new AbstractMap.SimpleEntry(number, result));
+		if (System.currentTimeMillis() - lastUpdate < minimumUpdateTime) return ;
+		try {
+			RequestBody requestBody;
+			requestBody = new MultipartBody.Builder()
+				.setType(MultipartBody.FORM)
+				.addFormDataPart("id", id.split("_")[0])
+				.addFormDataPart("update_time", null,
+						RequestBody.create(mapper.writeValueAsString((type.equals("submission") ? submissionsStorage.getUpdateTime(id) : userTestsStorage.getUpdateTime(id)).toInstant()), okhttp3.MediaType.parse("application/json")))
+				.addFormDataPart("steps", null,
+						RequestBody.create(mapper.writeValueAsString(updates), okhttp3.MediaType.parse("application/json")))
+				.build();
+			if (updateScoreContest(id, requestBody, "/api/worker/" + type + "/steps") == true) {
+				updates.clear();
+				lastUpdate = System.currentTimeMillis();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.out.println("Sending updates for " + type + " " + id + " failed");
+		}
+	}
+
+	@Override
+	public boolean setCompileResultWithBlocking(String id, String type, StepResult compileResult) {
+		if ((type.equals("submission") && submissionsStorage.checkBlocked(id) == true) ||
+			(type.equals("user_tests") && userTestsStorage.checkBlocked(id) == true)) return false;
+		updateStepContest(id, type, -1, compileResult);
+		return true;
+	}
+
+	@Override
+	public boolean addTestResultWithBlocking(String id, String type, int testNumber, StepResult testResult) {
+		if ((type.equals("submission") && submissionsStorage.checkBlocked(id) == true) ||
+			(type.equals("user_tests") && userTestsStorage.checkBlocked(id) == true)) return false;
+		updateStepContest(id, type, testNumber, testResult);
+		return true;
+	}
+
+	@Override
+	public boolean scoreUpdatedWithBlocking(String id, SubmissionScore score) {
+		String type = score.getType();
+		if (!type.equals("submission") && !type.equals("user_tests")) return true;
+		boolean blocked = false;
+		if (type.equals("submission")) blocked = submissionsStorage.setResult(id, score);
+		if (type.equals("user_tests")) blocked = userTestsStorage.setResult(id, score);
+			
+		if (blocked == false && (score.getCompileResult() == null || score.isFinished() == true)) {
+			try {
+				RequestBody requestBody;
+				requestBody = new MultipartBody.Builder()
+					.setType(MultipartBody.FORM)
+					.addFormDataPart("id", id.split("_")[0])
+					.addFormDataPart("update_time", null,
+						RequestBody.create(mapper.writeValueAsString((type.equals("submission") ? submissionsStorage.getUpdateTime(id) : userTestsStorage.getUpdateTime(id)).toInstant()), okhttp3.MediaType.parse("application/json")))
+					.addFormDataPart("score", null,
+							RequestBody.create(mapper.writeValueAsString(score), okhttp3.MediaType.parse("application/json")))
+					.build();
+				updateScoreContest(id, requestBody, "/api/worker/" + type + "/score");
+			} catch (Exception e) {
+				e.printStackTrace();
+				System.out.println("Updating score for " + type + " " + id + " failed");
+			}
+		}
+		return !blocked;
 	}
 
 	@GetMapping("/submissions/{submission_id}/score")
@@ -282,7 +436,7 @@ public class RestService implements GradeListener {
 	@GetMapping("/user_tests/{user_test_id}/user_output")
 	public ResponseEntity<?> getUserTestUserOutputFile(@PathVariable("user_test_id") String userTestId) {
 		File userOutputFile = userTestsStorage.getUserOutputFile(userTestId);
-		if (!userOutputFile.exists()) return ResponseEntity.ok(null);
+		if (userOutputFile == null || !userOutputFile.exists()) return ResponseEntity.ok(null);
 		try {
 			InputStreamResource inputStreamResource = new InputStreamResource(new FileInputStream(userOutputFile));
 			org.springframework.http.MediaType mediaType = org.springframework.http.MediaType.APPLICATION_OCTET_STREAM;
