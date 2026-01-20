@@ -9,7 +9,6 @@ import java.util.stream.Collectors;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
-import java.net.InetAddress;
 import java.sql.Timestamp;
 
 import javax.servlet.http.HttpServletRequest;
@@ -197,15 +196,16 @@ public class RestService implements GradeListener {
 			@RequestPart("update_time") Optional<Timestamp> updateTime,
 			HttpServletRequest request) {
 		instanceId.ifPresent(id -> {
-			String remoteHost = request.getRemoteHost(), port = request.getHeader("X-Client-Port");
-			boolean isIP = false;
-			try {
-				InetAddress addr = InetAddress.getByName(remoteHost);
-				isIP = remoteHost.equals(addr.getHostAddress());
-			} catch (Exception e) {
-				e.printStackTrace();
+			String remoteAddr = request.getRemoteAddr(), port = request.getHeader("X-Client-Port");
+			if (("127.0.0.1".equals(remoteAddr) || "0:0:0:0:0:0:0:1".equals(remoteAddr) || "::1".equals(remoteAddr)) && port != null) {
+				instancesURLs.put(id, "http://localhost:" + port);
 			}
-			instancesURLs.put(id, isIP ? "http://" + request.getRemoteAddr() + (port != null ? ":" + port : "") : "https://" + remoteHost);
+			else {
+				String URL = request.getHeader("X-Client-URL");
+				if (URL != null) {
+					instancesURLs.put(id, URL);
+				}
+			}
 		});
 
 		String id = submissionId + "_" + new Random().nextInt(100);
@@ -253,15 +253,16 @@ public class RestService implements GradeListener {
 		if (inputFiles == null) inputFiles = new MultipartFile[0];
 		if (outputFiles == null) outputFiles = new MultipartFile[0];
 		instanceId.ifPresent(id -> {
-			String remoteHost = request.getRemoteHost(), port = request.getHeader("X-Client-Port");
-			boolean isIP = false;
-			try {
-				InetAddress addr = InetAddress.getByName(remoteHost);
-				isIP = remoteHost.equals(addr.getHostAddress());
-			} catch (Exception e) {
-				e.printStackTrace();
+			String remoteAddr = request.getRemoteAddr(), port = request.getHeader("X-Client-Port");
+			if (("127.0.0.1".equals(remoteAddr) || "0:0:0:0:0:0:0:1".equals(remoteAddr) || "::1".equals(remoteAddr)) && port != null) {
+				instancesURLs.put(id, "http://localhost:" + port);
 			}
-			instancesURLs.put(id, isIP ? "http://" + request.getRemoteAddr() + (port != null ? ":" + port : "") : "https://" + remoteHost);
+			else {
+				String URL = request.getHeader("X-Client-URL");
+				if (URL != null) {
+					instancesURLs.put(id, URL);
+				}
+			}
 		});
 
 		String id = userTestId + "_" + new Random().nextInt(100);
@@ -325,9 +326,9 @@ public class RestService implements GradeListener {
 			.post(requestBody)
 			.build();
 		OkHttpClient client = new OkHttpClient().newBuilder()
-			.connectTimeout(10, TimeUnit.MINUTES)
-			.readTimeout(10, TimeUnit.MINUTES)
-			.writeTimeout(10, TimeUnit.MINUTES)
+			.connectTimeout(3, TimeUnit.SECONDS)
+			.readTimeout(10, TimeUnit.SECONDS)
+			.writeTimeout(10, TimeUnit.SECONDS)
 			.build();
 		try (Response response = client.newCall(request).execute()) {
 			if (!response.isSuccessful()) {
