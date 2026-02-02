@@ -21,7 +21,7 @@ then
 
 	git -C /app/worker checkout noi
 	git -C /app/worker pull
-	rm /app/worker/target/worker-0.0.1-SNAPSHOT.jar
+	rm -f /app/worker/target/worker-0.0.1-SNAPSHOT.jar
 	mvn install -f /app/worker/pom.xml
 else
 	git -C /vagrant/sandbox checkout noi
