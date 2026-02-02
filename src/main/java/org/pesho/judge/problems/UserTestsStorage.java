@@ -41,18 +41,19 @@ public class UserTestsStorage {
 	public UserTestsStorage () {
 		File userTestsDir = new File(workDir, "user_tests");
 		File[] userTestsDirs = userTestsDir.listFiles();
-		if (userTestsDirs == null) return ;
 		
 		workerUserTestsIds = new HashMap<>();
-		Map<String, Long> lastModified = new HashMap<>();
-		for (File userTestDir: userTestsDir.listFiles()) {
-			if (!userTestDir.isDirectory()) continue;
-			
-			String workerUserTestId = userTestDir.getName();
-			String userTestId = getUserTestId(workerUserTestId);
-			if (!lastModified.containsKey(userTestId) || lastModified.get(userTestId) < userTestDir.lastModified()) {
-				workerUserTestsIds.put(userTestId, workerUserTestId);
-				lastModified.put(userTestId, userTestDir.lastModified());
+		if (userTestsDirs != null) {
+			Map<String, Long> lastModified = new HashMap<>();
+			for (File userTestDir: userTestsDir.listFiles()) {
+				if (!userTestDir.isDirectory()) continue;
+				
+				String workerUserTestId = userTestDir.getName();
+				String userTestId = getUserTestId(workerUserTestId);
+				if (!lastModified.containsKey(userTestId) || lastModified.get(userTestId) < userTestDir.lastModified()) {
+					workerUserTestsIds.put(userTestId, workerUserTestId);
+					lastModified.put(userTestId, userTestDir.lastModified());
+				}
 			}
 		}
 

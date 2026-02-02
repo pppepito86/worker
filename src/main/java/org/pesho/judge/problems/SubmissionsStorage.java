@@ -38,18 +38,19 @@ public class SubmissionsStorage {
 	public SubmissionsStorage () {
 		File submissionsDir = new File(workDir, "submissions");
 		File[] submissionsDirs = submissionsDir.listFiles();
-		if (submissionsDirs == null) return ;
 		
 		workerSubmissionsIds = new HashMap<>();
-		Map<String, Long> lastModified = new HashMap<>();
-		for (File submissionDir: submissionsDir.listFiles()) {
-			if (!submissionDir.isDirectory()) continue;
-			
-			String workerSubmissionId = submissionDir.getName();
-			String submissionId = getSubmissionId(workerSubmissionId);
-			if (!lastModified.containsKey(submissionId) || lastModified.get(submissionId) < submissionDir.lastModified()) {
-				workerSubmissionsIds.put(submissionId, workerSubmissionId);
-				lastModified.put(submissionId, submissionDir.lastModified());
+		if (submissionsDirs != null) {
+			Map<String, Long> lastModified = new HashMap<>();
+			for (File submissionDir: submissionsDir.listFiles()) {
+				if (!submissionDir.isDirectory()) continue;
+				
+				String workerSubmissionId = submissionDir.getName();
+				String submissionId = getSubmissionId(workerSubmissionId);
+				if (!lastModified.containsKey(submissionId) || lastModified.get(submissionId) < submissionDir.lastModified()) {
+					workerSubmissionsIds.put(submissionId, workerSubmissionId);
+					lastModified.put(submissionId, submissionDir.lastModified());
+				}
 			}
 		}
 

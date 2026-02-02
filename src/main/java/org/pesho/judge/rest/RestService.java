@@ -24,6 +24,7 @@ import org.pesho.judge.daos.SubmissionDto;
 import org.pesho.judge.problems.ProblemsCache;
 import org.pesho.judge.problems.SubmissionsStorage;
 import org.pesho.judge.problems.UserTestsStorage;
+import org.pesho.sandbox.CommandResult;
 import org.pesho.sandbox.CommandStatus;
 import org.pesho.sandbox.SandboxExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -91,19 +92,20 @@ public class RestService implements GradeListener {
 		if (!lock.tryLock()) return "not-free";
 		try {
 			File dir = Files.createTempDirectory("health-check").toFile();
-			if (new SandboxExecutor()
+			CommandResult result = new SandboxExecutor()
 					.directory(dir)
 					.timeout(0.1)
 					.clean(true)
 					.command("/bin/echo test")
-					.execute().getResult().getStatus() == CommandStatus.SUCCESS) {
+					.execute().getResult();
+			if (result.getStatus() == CommandStatus.SUCCESS) {
 				return "ok";
 			} else {
-				return "failed";
+				return result.getStatus().toString() + "_" + result.getReason();
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			return "failed";
+			return e.getMessage();
 		} finally {
 			lock.unlock();
 		}
