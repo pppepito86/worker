@@ -75,6 +75,7 @@ public class RestService implements GradeListener {
 	private Map<String, String> instancesURLs = new ConcurrentHashMap<>();
 
 	private final ReentrantLock lock = new ReentrantLock();
+	private final ReentrantLock healthLock = new ReentrantLock();
 
 	private List<AbstractMap.Entry<Integer,StepResult>> updates = new ArrayList<>();
 	private long lastUpdate = 0L;
@@ -89,7 +90,11 @@ public class RestService implements GradeListener {
 	
 	@GetMapping("/health-check")
 	public String healthCheck() {
-		if (!lock.tryLock()) return "not-free";
+		healthLock.lock();
+		if (!lock.tryLock()) {
+			healthLock.unlock();
+			return "not-free";
+		}
 		try {
 			File dir = Files.createTempDirectory("health-check").toFile();
 			CommandResult result = new SandboxExecutor()
@@ -108,6 +113,7 @@ public class RestService implements GradeListener {
 			return e.getMessage();
 		} finally {
 			lock.unlock();
+			healthLock.unlock();
 		}
 	}
 
