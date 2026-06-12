@@ -23,7 +23,6 @@ public class SubmissionsStorage {
 
 	private ObjectMapper mapper = new ObjectMapper();
 	
-	@Value("${work.dir}")
 	private String workDir;
 
 	private String getSubmissionId (String workerSubmissionId) {
@@ -35,7 +34,9 @@ public class SubmissionsStorage {
 		return submissionId;
 	}
 
-	public SubmissionsStorage () {
+	public SubmissionsStorage (@Value("${work.dir}") String workDir) {
+		this.workDir = workDir;
+
 		File submissionsDir = new File(workDir, "submissions");
 		File[] submissionsDirs = submissionsDir.listFiles();
 		

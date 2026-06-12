@@ -26,7 +26,6 @@ public class UserTestsStorage {
 
 	private ObjectMapper mapper = new ObjectMapper();
 	
-	@Value("${work.dir}")
 	private String workDir;
 
 	private String getUserTestId (String workerUserTestId) {
@@ -38,7 +37,9 @@ public class UserTestsStorage {
 		return userTestId;
 	}
 
-	public UserTestsStorage () {
+	public UserTestsStorage (@Value("${work.dir}") String workDir) {
+		this.workDir = workDir;
+
 		File userTestsDir = new File(workDir, "user_tests");
 		File[] userTestsDirs = userTestsDir.listFiles();
 		
